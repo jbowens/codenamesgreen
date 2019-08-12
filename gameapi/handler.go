@@ -19,6 +19,7 @@ func Handler(wordLists map[string][]string) http.Handler {
 		ServeMux:  http.NewServeMux(),
 		wordLists: wordLists,
 		rand:      rand.New(rand.NewSource(time.Now().UnixNano())),
+		games:     make(map[string]*Game),
 	}
 	h.HandleFunc("/game-state", h.handleGameState)
 	return h
