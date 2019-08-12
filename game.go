@@ -105,7 +105,8 @@ func ReconstructGame(state GameState) (g Game) {
 		}
 	}
 
-	// Assign the colors for teach team.
+	// Assign the colors for each team, according to the
+	// relative distribution in the rule book.
 	perm := rnd.Perm(len(colorDistribution))
 	for i, colors := range colorDistribution {
 		g.OneLayout[perm[i]] = colors[0]
