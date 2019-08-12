@@ -1,4 +1,4 @@
-package codenamesgreen
+package gameapi
 
 import (
 	"reflect"
