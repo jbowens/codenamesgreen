@@ -8,7 +8,7 @@ import (
 type Color int
 
 const (
-	Neutral Color = iota
+	Tan Color = iota
 	Green
 	Black
 )
@@ -20,7 +20,7 @@ func (c Color) String() string {
 	case Black:
 		return "b"
 	default:
-		return "n"
+		return "t"
 	}
 }
 
@@ -89,28 +89,28 @@ func ReconstructGame(state GameState) (g Game) {
 
 var colorDistribution = [25][2]Color{
 	{Black, Green},
-	{Neutral, Green},
-	{Neutral, Green},
-	{Neutral, Green},
-	{Neutral, Green},
-	{Neutral, Green},
+	{Tan, Green},
+	{Tan, Green},
+	{Tan, Green},
+	{Tan, Green},
+	{Tan, Green},
 	{Green, Green},
 	{Green, Green},
 	{Green, Green},
-	{Green, Neutral},
-	{Green, Neutral},
-	{Green, Neutral},
-	{Green, Neutral},
-	{Green, Neutral},
+	{Green, Tan},
+	{Green, Tan},
+	{Green, Tan},
+	{Green, Tan},
+	{Green, Tan},
 	{Green, Black},
-	{Neutral, Black},
+	{Tan, Black},
 	{Black, Black},
-	{Neutral, Neutral},
-	{Neutral, Neutral},
-	{Neutral, Neutral},
-	{Neutral, Neutral},
-	{Neutral, Neutral},
-	{Neutral, Neutral},
-	{Neutral, Neutral},
-	{Black, Neutral},
+	{Tan, Tan},
+	{Tan, Tan},
+	{Tan, Tan},
+	{Tan, Tan},
+	{Tan, Tan},
+	{Tan, Tan},
+	{Tan, Tan},
+	{Black, Tan},
 }
