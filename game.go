@@ -5,34 +5,6 @@ import (
 	"math/rand"
 )
 
-var colorDistribution = [25][2]Color{
-	{Black, Green},
-	{Neutral, Green},
-	{Neutral, Green},
-	{Neutral, Green},
-	{Neutral, Green},
-	{Neutral, Green},
-	{Green, Green},
-	{Green, Green},
-	{Green, Green},
-	{Green, Neutral},
-	{Green, Neutral},
-	{Green, Neutral},
-	{Green, Neutral},
-	{Green, Neutral},
-	{Green, Black},
-	{Neutral, Black},
-	{Black, Black},
-	{Neutral, Neutral},
-	{Neutral, Neutral},
-	{Neutral, Neutral},
-	{Neutral, Neutral},
-	{Neutral, Neutral},
-	{Neutral, Neutral},
-	{Neutral, Neutral},
-	{Black, Neutral},
-}
-
 type Color int
 
 const (
@@ -113,4 +85,32 @@ func ReconstructGame(state GameState) (g Game) {
 		g.TwoLayout[perm[i]] = colors[1]
 	}
 	return g
+}
+
+var colorDistribution = [25][2]Color{
+	{Black, Green},
+	{Neutral, Green},
+	{Neutral, Green},
+	{Neutral, Green},
+	{Neutral, Green},
+	{Neutral, Green},
+	{Green, Green},
+	{Green, Green},
+	{Green, Green},
+	{Green, Neutral},
+	{Green, Neutral},
+	{Green, Neutral},
+	{Green, Neutral},
+	{Green, Neutral},
+	{Green, Black},
+	{Neutral, Black},
+	{Black, Black},
+	{Neutral, Neutral},
+	{Neutral, Neutral},
+	{Neutral, Neutral},
+	{Neutral, Neutral},
+	{Neutral, Neutral},
+	{Neutral, Neutral},
+	{Neutral, Neutral},
+	{Black, Neutral},
 }
