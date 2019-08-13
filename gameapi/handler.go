@@ -62,7 +62,7 @@ func (h *handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	header := rw.Header()
 	header.Set("Access-Control-Allow-Origin", "*")
 	header.Set("Access-Control-Allow-Methods", "*")
-	header.Set("Access-Control-Allow-Headers", "*")
+	header.Set("Access-Control-Allow-Headers", "Content-Type")
 	header.Set("Access-Control-Max-Age", "1728000") // 20 days
 
 	if req.Method == "OPTIONS" {
@@ -93,7 +93,7 @@ func (h *handler) handleNewGame(rw http.ResponseWriter, req *http.Request) {
 	// existing game.
 	oldGame, ok := h.games[body.GameID]
 	if ok && (body.PrevSeed == nil || *body.PrevSeed != strconv.FormatInt(oldGame.Seed, 10)) {
-		writeError(rw, "previous_seed_mismatch", "Unable to create new game; the game was updated.", 400)
+		writeJSON(rw, oldGame)
 		return
 	}
 
