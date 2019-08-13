@@ -33,12 +33,13 @@ func (c Color) MarshalJSON() ([]byte, error) {
 // a Game's state. It's used to recreate games after
 // a process restart.
 type GameState struct {
-	Seed       int64             `json:"seed"`
-	Round      int               `json:"round"`
-	ExposedOne []bool            `json:"exposed_one"`
-	ExposedTwo []bool            `json:"exposed_two"`
-	Players    map[string]Player `json:"players"`
-	WordSet    []string          `json:"word_set"`
+	Seed          int64             `json:"seed"`
+	Round         int               `json:"round"`
+	TeamLastGuess int               `json:"team_last_guess"`
+	ExposedOne    []bool            `json:"exposed_one"`
+	ExposedTwo    []bool            `json:"exposed_two"`
+	Players       map[string]Player `json:"players"`
+	WordSet       []string          `json:"word_set"`
 }
 
 type Player struct {
@@ -63,6 +64,26 @@ type Game struct {
 	Words     []string  `json:"words"`
 	OneLayout []Color   `json:"one_layout"`
 	TwoLayout []Color   `json:"two_layout"`
+}
+
+func (g *Game) markGuess(team int, index int) {
+	var opp []bool
+	switch team {
+	case 1:
+		opp = g.ExposedTwo
+	case 2:
+		opp = g.ExposedOne
+	default:
+		return
+	}
+	if index < 0 || index >= len(opp) {
+		return
+	}
+	opp[index] = true
+	if team != g.TeamLastGuess {
+		g.Round++
+		g.TeamLastGuess = team
+	}
 }
 
 func (g *Game) markSeen(playerID string, team int, when time.Time) {
@@ -90,7 +111,6 @@ func (g *Game) pruneOldPlayers(now time.Time) {
 func ReconstructGame(state GameState) (g Game) {
 	g = Game{
 		GameState: state,
-		CreatedAt: time.Now(),
 		OneLayout: make([]Color, len(colorDistribution)),
 		TwoLayout: make([]Color, len(colorDistribution)),
 	}
