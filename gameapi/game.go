@@ -3,6 +3,7 @@ package gameapi
 import (
 	"encoding/json"
 	"math/rand"
+	"time"
 )
 
 type Color int
@@ -32,12 +33,17 @@ func (c Color) MarshalJSON() ([]byte, error) {
 // a Game's state. It's used to recreate games after
 // a process restart.
 type GameState struct {
-	Seed       int64          `json:"seed"`
-	Round      int            `json:"round"`
-	ExposedOne []bool         `json:"exposed_one"`
-	ExposedTwo []bool         `json:"exposed_two"`
-	Teams      map[string]int `json:"teams"`
-	WordSet    []string       `json:"word_set"`
+	Seed       int64             `json:"seed"`
+	Round      int               `json:"round"`
+	ExposedOne []bool            `json:"exposed_one"`
+	ExposedTwo []bool            `json:"exposed_two"`
+	Players    map[string]Player `json:"players"`
+	WordSet    []string          `json:"word_set"`
+}
+
+type Player struct {
+	Team     int       `json:"team"`
+	LastSeen time.Time `json:"last_seen"`
 }
 
 func NewState(seed int64, words []string) GameState {
@@ -46,21 +52,45 @@ func NewState(seed int64, words []string) GameState {
 		Round:      0,
 		ExposedOne: make([]bool, len(colorDistribution)),
 		ExposedTwo: make([]bool, len(colorDistribution)),
-		Teams:      make(map[string]int),
+		Players:    make(map[string]Player),
 		WordSet:    words,
 	}
 }
 
 type Game struct {
-	GameState
-	Words     []string
-	OneLayout []Color
-	TwoLayout []Color
+	GameState `json:"state"`
+	CreatedAt time.Time `json:"created_at"`
+	Words     []string  `json:"words"`
+	OneLayout []Color   `json:"one_layout"`
+	TwoLayout []Color   `json:"two_layout"`
+}
+
+func (g *Game) markSeen(playerID string, team int, when time.Time) {
+	p, ok := g.Players[playerID]
+	if ok {
+		p.LastSeen = when
+		if team != 0 {
+			p.Team = team
+		}
+		g.Players[playerID] = p
+		return
+	}
+	g.Players[playerID] = Player{Team: team, LastSeen: when}
+}
+
+func (g *Game) pruneOldPlayers(now time.Time) {
+	for id, player := range g.Players {
+		if player.LastSeen.Add(50 * time.Second).Before(now) {
+			delete(g.Players, id)
+			continue
+		}
+	}
 }
 
 func ReconstructGame(state GameState) (g Game) {
 	g = Game{
 		GameState: state,
+		CreatedAt: time.Now(),
 		OneLayout: make([]Color, len(colorDistribution)),
 		TwoLayout: make([]Color, len(colorDistribution)),
 	}

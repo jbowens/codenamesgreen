@@ -25,6 +25,25 @@ func Handler(wordLists map[string][]string) http.Handler {
 	}
 	h.mux.HandleFunc("/new-game", h.handleNewGame)
 	h.mux.HandleFunc("/game-state", h.handleGameState)
+
+	// Periodically remove games that are old and inactive.
+	go func() {
+		for now := range time.Tick(10 * time.Minute) {
+			h.mu.Lock()
+			for id, g := range h.games {
+				g.pruneOldPlayers(now)
+				if len(g.Players) > 0 {
+					continue // at least one player is still in the game
+				}
+				if g.CreatedAt.Add(24 * time.Hour).After(time.Now()) {
+					continue // hasn't been 24 hours since the game started
+				}
+				delete(h.games, id)
+			}
+			h.mu.Unlock()
+		}
+	}()
+
 	return h
 }
 
@@ -71,7 +90,8 @@ func (h *handler) handleNewGame(rw http.ResponseWriter, req *http.Request) {
 	// If the game already exists, make sure that the request includes
 	// the existing game's seed so a delayed request doesn't reset an
 	// existing game.
-	if g, ok := h.games[body.GameID]; ok && (body.PrevSeed == nil || *body.PrevSeed != strconv.FormatInt(g.Seed, 10)) {
+	oldGame, ok := h.games[body.GameID]
+	if ok && (body.PrevSeed == nil || *body.PrevSeed != strconv.FormatInt(oldGame.Seed, 10)) {
 		writeError(rw, "previous_seed_mismatch", "Unable to create new game; the game was updated.", 400)
 		return
 	}
@@ -87,6 +107,14 @@ func (h *handler) handleNewGame(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	game := ReconstructGame(NewState(h.rand.Int63(), words))
+	if oldGame != nil {
+		// Carry over the players but without teams in case
+		// they want to switch them up.
+		for id, p := range oldGame.Players {
+			game.Players[id] = Player{LastSeen: p.LastSeen}
+		}
+	}
+
 	g := &game
 	h.games[body.GameID] = g
 	writeJSON(rw, g)
@@ -95,7 +123,9 @@ func (h *handler) handleNewGame(rw http.ResponseWriter, req *http.Request) {
 // POST /game-state
 func (h *handler) handleGameState(rw http.ResponseWriter, req *http.Request) {
 	var body struct {
-		GameID string `json:"game_id"`
+		GameID   string `json:"game_id"`
+		PlayerID string `json:"player_id,omitempty"`
+		Team     int    `json:"team,omitempty"`
 	}
 	err := json.NewDecoder(req.Body).Decode(&body)
 	if err != nil || body.GameID == "" {
@@ -109,6 +139,9 @@ func (h *handler) handleGameState(rw http.ResponseWriter, req *http.Request) {
 	if !ok {
 		writeError(rw, "not_found", "Game not found", 404)
 		return
+	}
+	if body.PlayerID != "" {
+		g.markSeen(body.PlayerID, body.Team, time.Now())
 	}
 	writeJSON(rw, g)
 }
