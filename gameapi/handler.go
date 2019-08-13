@@ -2,6 +2,7 @@ package gameapi
 
 import (
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"net/http"
 	"path/filepath"
@@ -34,16 +35,46 @@ type handler struct {
 	games map[string]*Game
 }
 
-func (h *handler) getGame(gameID string) *Game {
-	if g, ok := h.games[gameID]; ok {
-		return g
+// POST /new-game
+func (h *handler) handleNewGame(rw http.ResponseWriter, req *http.Request) {
+	var body struct {
+		GameID   string   `json:"game_id"`
+		Words    []string `json:"words"`
+		PrevSeed *int64   `json:"prev_seed"`
+	}
+	err := json.NewDecoder(req.Body).Decode(&body)
+	if err != nil || body.GameID == "" {
+		writeError(rw, "malformed_body", "Unable to parse request body.", 400)
+		return
 	}
 
-	state := NewState(h.rand.Int63(), h.wordLists["green"])
-	game := ReconstructGame(state)
-	g := &game
-	h.games[gameID] = g
-	return g
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	g, ok := h.games[body.GameID]
+
+	// If the game already exists, make sure that the request includes
+	// the existing game's seed so a delayed request doesn't reset an
+	// existing game.
+	if ok && (body.PrevSeed == nil || *body.PrevSeed != g.Seed) {
+		writeError(rw, "previous_seed_mismatch", "Unable to create new game; the game was updated.", 400)
+		return
+	}
+
+	words := body.Words
+	if len(words) == 0 {
+		words = h.wordLists["green"]
+	}
+	if len(words) < len(colorDistribution) {
+		writeError(rw, "too_few_words",
+			fmt.Sprintf("A word list must have at least %d words.", len(colorDistribution)), 400)
+		return
+	}
+
+	game := ReconstructGame(NewState(h.rand.Int63(), words))
+	g = &game
+	h.games[body.GameID] = g
+	writeJSON(rw, g)
 }
 
 // POST /game-state
@@ -53,14 +84,26 @@ func (h *handler) handleGameState(rw http.ResponseWriter, req *http.Request) {
 	}
 	err := json.NewDecoder(req.Body).Decode(&body)
 	if err != nil || body.GameID == "" {
-		http.Error(rw, "Error decoding request body", 400)
+		writeError(rw, "malformed_body", "Unable to parse request body.", 400)
 		return
 	}
 
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	g := h.getGame(body.GameID)
+	g, ok := h.games[body.GameID]
+	if !ok {
+		writeError(rw, "not_found", "Game not found", 404)
+		return
+	}
 	writeJSON(rw, g)
+}
+
+func writeError(rw http.ResponseWriter, code, message string, statusCode int) {
+	rw.WriteHeader(statusCode)
+	writeJSON(rw, struct {
+		Code    string `json:"code"`
+		Message string `json:"message"`
+	}{Code: code, Message: message})
 }
 
 func writeJSON(rw http.ResponseWriter, resp interface{}) {
