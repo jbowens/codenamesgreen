@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -16,18 +17,19 @@ import (
 
 // Handler implements the codenames green server handler.
 func Handler(wordLists map[string][]string) http.Handler {
-	h := handler{
-		ServeMux:  http.NewServeMux(),
+	h := &handler{
+		mux:       http.NewServeMux(),
 		wordLists: wordLists,
 		rand:      rand.New(rand.NewSource(time.Now().UnixNano())),
 		games:     make(map[string]*Game),
 	}
-	h.HandleFunc("/game-state", h.handleGameState)
+	h.mux.HandleFunc("/new-game", h.handleNewGame)
+	h.mux.HandleFunc("/game-state", h.handleGameState)
 	return h
 }
 
 type handler struct {
-	*http.ServeMux
+	mux       *http.ServeMux
 	wordLists map[string][]string
 	rand      *rand.Rand
 
@@ -35,12 +37,27 @@ type handler struct {
 	games map[string]*Game
 }
 
+func (h *handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+	// Allow all cross-origin requests.
+	header := rw.Header()
+	header.Set("Access-Control-Allow-Origin", "*")
+	header.Set("Access-Control-Allow-Methods", "*")
+	header.Set("Access-Control-Allow-Headers", "*")
+	header.Set("Access-Control-Max-Age", "1728000") // 20 days
+
+	if req.Method == "OPTIONS" {
+		rw.WriteHeader(http.StatusOK)
+		return
+	}
+	h.mux.ServeHTTP(rw, req)
+}
+
 // POST /new-game
 func (h *handler) handleNewGame(rw http.ResponseWriter, req *http.Request) {
 	var body struct {
 		GameID   string   `json:"game_id"`
 		Words    []string `json:"words"`
-		PrevSeed *int64   `json:"prev_seed"`
+		PrevSeed *string  `json:"prev_seed"` // a string because of js number precision
 	}
 	err := json.NewDecoder(req.Body).Decode(&body)
 	if err != nil || body.GameID == "" {
@@ -51,12 +68,10 @@ func (h *handler) handleNewGame(rw http.ResponseWriter, req *http.Request) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 
-	g, ok := h.games[body.GameID]
-
 	// If the game already exists, make sure that the request includes
 	// the existing game's seed so a delayed request doesn't reset an
 	// existing game.
-	if ok && (body.PrevSeed == nil || *body.PrevSeed != g.Seed) {
+	if g, ok := h.games[body.GameID]; ok && (body.PrevSeed == nil || *body.PrevSeed != strconv.FormatInt(g.Seed, 10)) {
 		writeError(rw, "previous_seed_mismatch", "Unable to create new game; the game was updated.", 400)
 		return
 	}
@@ -72,7 +87,7 @@ func (h *handler) handleNewGame(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	game := ReconstructGame(NewState(h.rand.Int63(), words))
-	g = &game
+	g := &game
 	h.games[body.GameID] = g
 	writeJSON(rw, g)
 }
