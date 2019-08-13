@@ -1,0 +1,12 @@
+{
+  "name": "codenamesgreen",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "git@github.com:jbowens/codenamesgreen.git",
+  "author": "Jackson Owens <jackson_owens@alumni.brown.edu>",
+  "license": "MIT",
+  "devDependencies": {
+    "elm-hot": "^1.1.1",
+    "node-elm-compiler": "^5.0.4"
+  }
+}

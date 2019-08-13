@@ -1,0 +1,85 @@
+body {
+  font-family: 'Source Sans Pro', 'Trebuchet MS', 'Lucida Grande', 'Bitstream Vera Sans', 'Helvetica Neue', sans-serif;
+  margin: 0;
+  color: #293c4b;
+}
+
+#header a {
+  text-decoration: none;
+  color: #000;
+}
+
+#header {
+  border-bottom: 1px #EEE solid;
+}
+
+h1, h2 {
+  font-family: "Exo 2", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+#header h1 {
+  font-size: 1em;
+  padding: 1em;
+  margin: 0;
+}
+
+#not-found, #home {
+  text-align: center;
+  margin: 5vh auto;
+  max-width: 600px;
+}
+
+#home h1 {
+  font-size: 2em;
+}
+
+#home p {
+  margin: 2em 0;
+  line-height: 1.5em;
+  text-align: justify;
+}
+
+form#new-game {
+  margin: 3em;
+}
+
+form#new-game button {
+  background: #85de6f;
+  border: none;
+  font-size: 1em;
+  cursor: pointer;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  width: 120px;
+  height: 62px;
+  vertical-align: top;
+}
+
+input#game-id {
+  padding: 0.2em 0.5em;
+  font-size: 1.3em;
+  border: 1px #ddd solid;
+  letter-spacing: .1em;
+  width: 350px;
+  height: 50px;
+}
+
+#game-loading {
+  margin: 5vh;
+}
+
+#board {
+  width: 80vw;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-gap: 0.1vw;
+}
+
+#board .cell {
+  background: #EEE;
+  text-align: center;
+  padding: 3em 0;
+  cursor: default;
+}
