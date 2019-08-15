@@ -24,8 +24,8 @@ h3 {
 }
 
 #header h1 {
-  font-size: 1em;
-  padding: 1em;
+  font-size: 2vh;
+  padding: 1vh;
   margin: 0;
 }
 
@@ -85,7 +85,9 @@ input#game-id {
   width: 80%;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
+  grid-auto-rows: 18vh;
   grid-gap: 0.1vw;
+  min-height: 80vh;
 }
 
 #board .cell {
@@ -93,6 +95,24 @@ input#game-id {
   text-align: center;
   padding: 3em 0;
   cursor: default;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#board .pickable:hover {
+  opacity: 0.75;
+  cursor: pointer;
+}
+
+#board .green {
+  background: green;
+  color: #FFF;
+}
+
+#board .black {
+  background: black;
+  color: #FFF;
 }
 
 #sidebar {

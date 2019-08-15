@@ -29,7 +29,7 @@ type Page
     = NotFound
     | Home String
     | GameLoading String
-    | GameInProgress Game.Game Game.Team
+    | GameInProgress String Game.Game Game.Team
 
 
 init : String -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -48,6 +48,7 @@ type Msg
     | IdChanged String
     | SubmitNewGame
     | PickTeam Game.Team
+    | PickWord Game.Cell
     | GotGame (Result Http.Error Game.Game)
 
 
@@ -87,19 +88,31 @@ update msg model =
 
         GotGame (Ok game) ->
             case model.page of
-                GameInProgress _ t ->
-                    ( { model | page = GameInProgress game t }, Cmd.none )
+                GameInProgress id _ t ->
+                    ( { model | page = GameInProgress id game t }, Cmd.none )
 
-                GameLoading _ ->
-                    ( { model | page = GameInProgress game (Game.teamOf game model.playerId) }, Cmd.none )
+                GameLoading id ->
+                    ( { model | page = GameInProgress id game (Game.teamOf game model.playerId) }, Cmd.none )
 
                 _ ->
                     ( model, Cmd.none )
 
         PickTeam team ->
             case model.page of
-                GameInProgress game _ ->
-                    ( { model | page = GameInProgress game team }, Cmd.none )
+                GameInProgress id game _ ->
+                    ( { model | page = GameInProgress id game team }, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        PickWord cell ->
+            case model.page of
+                GameInProgress id game team ->
+                    if team == Game.NoTeam then
+                        ( model, Cmd.none )
+
+                    else
+                        ( model, Game.guess id model.playerId cell team GotGame )
 
                 _ ->
                     ( model, Cmd.none )
@@ -162,7 +175,7 @@ view model =
             , body = viewGameLoading id
             }
 
-        GameInProgress game team ->
+        GameInProgress _ game team ->
             viewGameInProgress model.playerId game team
 
 
@@ -189,26 +202,52 @@ viewGameInProgress playerId g team =
         [ viewHeader
         , div [ Attr.id "game" ]
             [ div [ Attr.id "board" ]
-                (List.map5
-                    (\w e1 e2 l1 l2 ->
-                        div
-                            [ Attr.classList
-                                [ ( "cell", True )
-                                , ( "green", e1 && l1 == "g" || e2 && l2 == "g" )
-                                ]
-                            ]
-                            [ text w ]
-                    )
-                    g.words
-                    g.exposedOne
-                    g.exposedTwo
-                    g.oneLayout
-                    g.twoLayout
+                (List.map
+                    (\c -> viewCell c team)
+                    (Game.cells g)
                 )
             , div [ Attr.id "sidebar" ] (viewSidebar playerId g team)
             ]
         ]
     }
+
+
+viewCell : Game.Cell -> Game.Team -> Html Msg
+viewCell cell team =
+    let
+        exposedGreen =
+            cell.a == ( True, "g" ) || cell.b == ( True, "g" )
+
+        exposedBlack =
+            cell.a == ( True, "b" ) || cell.b == ( True, "b" )
+
+        pickable =
+            case team of
+                Game.A ->
+                    not (Tuple.first cell.b) && not exposedGreen && not exposedBlack
+
+                Game.B ->
+                    not (Tuple.first cell.a) && not exposedGreen && not exposedBlack
+
+                Game.NoTeam ->
+                    False
+    in
+    div
+        [ Attr.classList
+            [ ( "cell", True )
+            , ( "green", exposedGreen )
+            , ( "black", exposedBlack )
+            , ( "pickable", pickable )
+            ]
+        , onClick
+            (if pickable then
+                PickWord cell
+
+             else
+                NoOp
+            )
+        ]
+        [ text cell.word ]
 
 
 viewSidebar : String -> Game.Game -> Game.Team -> List (Html Msg)

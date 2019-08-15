@@ -1,4 +1,4 @@
-module Game exposing (Game, Player, Team(..), maybeMakeGame, playersOnTeam, teamOf)
+module Game exposing (Cell, Game, Player, Team(..), cells, guess, maybeMakeGame, playersOnTeam, teamOf)
 
 import Dict
 import Http
@@ -34,6 +34,28 @@ type alias Player =
     }
 
 
+type alias Cell =
+    { index : Int
+    , word : String
+    , a : ( Bool, String )
+    , b : ( Bool, String )
+    }
+
+
+cells : Game -> List Cell
+cells g =
+    List.indexedMap
+        (\i ( w, ( e1, l1 ), ( e2, l2 ) ) -> Cell i w ( e1, l1 ) ( e2, l2 ))
+        (List.map5
+            (\w e1 e2 l1 l2 -> ( w, ( e1, l1 ), ( e2, l2 ) ))
+            g.words
+            g.exposedOne
+            g.exposedTwo
+            g.oneLayout
+            g.twoLayout
+        )
+
+
 playersOnTeam : Game -> Team -> Int
 playersOnTeam g team =
     g.players
@@ -60,13 +82,30 @@ maybeMakeGame id msg =
         }
 
 
+guess : String -> String -> Cell -> Team -> (Result Http.Error Game -> a) -> Cmd a
+guess gameId playerId cell team msg =
+    Http.post
+        { url = "http://localhost:8080/guess"
+        , body =
+            Http.jsonBody
+                (Enc.object
+                    [ ( "game_id", Enc.string gameId )
+                    , ( "index", Enc.int cell.index )
+                    , ( "player_id", Enc.string playerId )
+                    , ( "team", encodeTeam team )
+                    ]
+                )
+        , expect = Http.expectJson msg decodeGame
+        }
+
+
 decodeGame : Dec.Decoder Game
 decodeGame =
     Dec.map8 Game
         (Dec.field "state" (Dec.field "seed" Dec.int))
         (Dec.field "state" (Dec.field "round" Dec.int))
         (Dec.field "words" (Dec.list Dec.string))
-        (Dec.field "state" (Dec.field "exposed_two" (Dec.list Dec.bool)))
+        (Dec.field "state" (Dec.field "exposed_one" (Dec.list Dec.bool)))
         (Dec.field "state" (Dec.field "exposed_two" (Dec.list Dec.bool)))
         (Dec.field "state" (Dec.field "players" (Dec.dict decodePlayer)))
         (Dec.field "one_layout" (Dec.list Dec.string))
@@ -77,7 +116,7 @@ decodePlayer : Dec.Decoder Player
 decodePlayer =
     Dec.map2 Player
         (Dec.field "team" decodeTeam)
-        (Dec.field "lastSeen" Dec.string)
+        (Dec.field "last_seen" Dec.string)
 
 
 decodeTeam : Dec.Decoder Team
@@ -95,3 +134,18 @@ decodeTeam =
                     _ ->
                         Dec.succeed NoTeam
             )
+
+
+encodeTeam : Team -> Enc.Value
+encodeTeam t =
+    Enc.int
+        (case t of
+            A ->
+                1
+
+            B ->
+                2
+
+            NoTeam ->
+                0
+        )
