@@ -126,3 +126,26 @@ input#game-id {
   font-size: 2em;
   display: block;
 }
+
+#key-card {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-gap: 0.5em;
+  padding: 0 1em;
+  margin: 0 auto;
+}
+
+#key-card .cell {
+  min-height: 3vw;
+  display: block;
+}
+
+#key-card .black {
+  background: #000;
+}
+#key-card .tan {
+  background: #D2B48C;
+}
+#key-card .green {
+  background: green;
+}

@@ -5,7 +5,7 @@ import Browser.Navigation as Nav
 import Game
 import Html exposing (Html, a, button, div, form, h1, h2, h3, img, input, p, span, text)
 import Html.Attributes as Attr
-import Html.Events exposing (onInput, onSubmit)
+import Html.Events exposing (onClick, onInput, onSubmit)
 import Http
 import Loading exposing (LoaderType(..), defaultConfig)
 import Url
@@ -47,6 +47,7 @@ type Msg
     | UrlChanged Url.Url
     | IdChanged String
     | SubmitNewGame
+    | PickTeam Game.Team
     | GotGame (Result Http.Error Game.Game)
 
 
@@ -90,7 +91,15 @@ update msg model =
                     ( { model | page = GameInProgress game t }, Cmd.none )
 
                 GameLoading _ ->
-                    ( { model | page = GameInProgress game Game.NoTeam }, Cmd.none )
+                    ( { model | page = GameInProgress game (Game.teamOf game model.playerId) }, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        PickTeam team ->
+            case model.page of
+                GameInProgress game _ ->
+                    ( { model | page = GameInProgress game team }, Cmd.none )
 
                 _ ->
                     ( model, Cmd.none )
@@ -180,9 +189,21 @@ viewGameInProgress playerId g team =
         [ viewHeader
         , div [ Attr.id "game" ]
             [ div [ Attr.id "board" ]
-                (List.map
-                    (\w -> div [ Attr.class "cell" ] [ text w ])
+                (List.map5
+                    (\w e1 e2 l1 l2 ->
+                        div
+                            [ Attr.classList
+                                [ ( "cell", True )
+                                , ( "green", e1 && l1 == "g" || e2 && l2 == "g" )
+                                ]
+                            ]
+                            [ text w ]
+                    )
                     g.words
+                    g.exposedOne
+                    g.exposedTwo
+                    g.oneLayout
+                    g.twoLayout
                 )
             , div [ Attr.id "sidebar" ] (viewSidebar playerId g team)
             ]
@@ -192,7 +213,45 @@ viewGameInProgress playerId g team =
 
 viewSidebar : String -> Game.Game -> Game.Team -> List (Html Msg)
 viewSidebar playerId g team =
-    [ viewJoinATeam (Game.playersOnTeam g Game.A) (Game.playersOnTeam g Game.B) ]
+    if team == Game.NoTeam then
+        [ viewJoinATeam (Game.playersOnTeam g Game.A) (Game.playersOnTeam g Game.B) ]
+
+    else
+        viewTeamSidebar playerId g team
+
+
+viewTeamSidebar : String -> Game.Game -> Game.Team -> List (Html Msg)
+viewTeamSidebar playerId g team =
+    [ div [ Attr.id "key-card" ]
+        (List.map
+            (\c ->
+                div
+                    [ Attr.class "cell"
+                    , Attr.class
+                        (case c of
+                            "g" ->
+                                "green"
+
+                            "b" ->
+                                "black"
+
+                            "t" ->
+                                "tan"
+
+                            _ ->
+                                "unknown"
+                        )
+                    ]
+                    []
+            )
+            (if team == Game.A then
+                g.oneLayout
+
+             else
+                g.twoLayout
+            )
+        )
+    ]
 
 
 viewJoinATeam : Int -> Int -> Html Msg
@@ -201,13 +260,13 @@ viewJoinATeam a b =
         [ h3 [] [ text "Pick a side" ]
         , p [] [ text "Pick a side to start playing. Each side has a different key card." ]
         , div [ Attr.class "buttons" ]
-            [ button []
-                [ span [ Attr.class "call-to-action" ] [ text "Side A" ]
-                , span [ Attr.class "details" ] [ text (String.fromInt a), text " players" ]
+            [ button [ onClick (PickTeam Game.A) ]
+                [ span [ Attr.class "call-to-action" ] [ text "A" ]
+                , span [ Attr.class "details" ] [ text "(", text (String.fromInt a), text " players)" ]
                 ]
-            , button []
-                [ span [ Attr.class "call-to-action" ] [ text "Side B" ]
-                , span [ Attr.class "details" ] [ text (String.fromInt b), text " players" ]
+            , button [ onClick (PickTeam Game.B) ]
+                [ span [ Attr.class "call-to-action" ] [ text "B" ]
+                , span [ Attr.class "details" ] [ text "(", text (String.fromInt b), text " players)" ]
                 ]
             ]
         ]
