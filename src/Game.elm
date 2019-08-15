@@ -34,19 +34,6 @@ type alias Player =
     }
 
 
-
------- NETWORK ------
-
-
-maybeMakeGame : String -> (Result Http.Error Game -> a) -> Cmd a
-maybeMakeGame id msg =
-    Http.post
-        { url = "http://localhost:8080/new-game"
-        , body = Http.jsonBody (Enc.object [ ( "game_id", Enc.string id ) ])
-        , expect = Http.expectJson msg decodeGame
-        }
-
-
 playersOnTeam : Game -> Team -> Int
 playersOnTeam g team =
     g.players
@@ -58,6 +45,19 @@ playersOnTeam g team =
 teamOf : Game -> String -> Team
 teamOf game playerId =
     Maybe.withDefault NoTeam (Maybe.map (\p -> p.team) (Dict.get playerId game.players))
+
+
+
+------ NETWORK ------
+
+
+maybeMakeGame : String -> (Result Http.Error Game -> a) -> Cmd a
+maybeMakeGame id msg =
+    Http.post
+        { url = "http://localhost:8080/new-game"
+        , body = Http.jsonBody (Enc.object [ ( "game_id", Enc.string id ) ])
+        , expect = Http.expectJson msg decodeGame
+        }
 
 
 decodeGame : Dec.Decoder Game
