@@ -13,10 +13,14 @@ body {
   border-bottom: 1px #EEE solid;
 }
 
-h1, h2 {
+h1, h2, h3 {
   font-family: "Exo 2", sans-serif;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+h3 {
+  margin: 0;
 }
 
 #header h1 {
@@ -70,8 +74,15 @@ input#game-id {
   margin: 5vh;
 }
 
+#game {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  flex-wrap: nowrap;
+}
+
 #board {
-  width: 80vw;
+  width: 80%;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   grid-gap: 0.1vw;
@@ -82,4 +93,36 @@ input#game-id {
   text-align: center;
   padding: 3em 0;
   cursor: default;
+}
+
+#sidebar {
+  width: 20%;
+}
+
+#join-a-team {
+  margin: 0.25em;
+}
+
+#join-a-team .buttons {
+  display: flex;
+  width: 100%;
+}
+
+#join-a-team button {
+  flex: 1;
+  margin: 0.25em;
+  background: #b1e773;
+  padding: 1em;
+  border: none;
+  border-radius: 0.5em;
+  cursor: pointer;
+}
+
+#join-a-team button:hover {
+  background: #c3f18d;
+}
+
+#join-a-team button .call-to-action {
+  font-size: 2em;
+  display: block;
 }

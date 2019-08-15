@@ -2,7 +2,8 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser
 import Browser.Navigation as Nav
-import Html exposing (Html, a, button, div, form, h1, h2, img, input, p, text)
+import Dict
+import Html exposing (Html, a, button, div, form, h1, h2, h3, img, input, p, span, text)
 import Html.Attributes as Attr
 import Html.Events exposing (onInput, onSubmit)
 import Http
@@ -21,6 +22,7 @@ import Url.Parser.Query as Query
 
 type alias Model =
     { key : Nav.Key
+    , playerId : String
     , page : Page
     }
 
@@ -32,16 +34,33 @@ type Page
     | GameInProgress Game
 
 
+type Team
+    = NoTeam
+    | A
+    | B
+
+
 type alias Game =
-    { words : List String
+    { seed : Int
+    , round : Int
+    , words : List String
+    , exposedOne : List Bool
+    , exposedTwo : List Bool
+    , players : Dict.Dict String Player
     , oneLayout : List String
     , twoLayout : List String
     }
 
 
-init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
-init _ url key =
-    stepUrl url { key = key, page = Home "" }
+type alias Player =
+    { team : Team
+    , lastSeen : String
+    }
+
+
+init : String -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init playerId url key =
+    stepUrl url { key = key, playerId = playerId, page = Home "" }
 
 
 
@@ -136,12 +155,46 @@ maybeMakeGame id =
         }
 
 
+teamOf : Game -> String -> Team
+teamOf game playerId =
+    Maybe.withDefault NoTeam (Maybe.map (\p -> p.team) (Dict.get playerId game.players))
+
+
 decodeGame : Dec.Decoder Game
 decodeGame =
-    Dec.map3 Game
+    Dec.map8 Game
+        (Dec.field "state" (Dec.field "seed" Dec.int))
+        (Dec.field "state" (Dec.field "round" Dec.int))
         (Dec.field "words" (Dec.list Dec.string))
+        (Dec.field "state" (Dec.field "exposed_two" (Dec.list Dec.bool)))
+        (Dec.field "state" (Dec.field "exposed_two" (Dec.list Dec.bool)))
+        (Dec.field "state" (Dec.field "players" (Dec.dict decodePlayer)))
         (Dec.field "one_layout" (Dec.list Dec.string))
         (Dec.field "two_layout" (Dec.list Dec.string))
+
+
+decodePlayer : Dec.Decoder Player
+decodePlayer =
+    Dec.map2 Player
+        (Dec.field "team" decodeTeam)
+        (Dec.field "lastSeen" Dec.string)
+
+
+decodeTeam : Dec.Decoder Team
+decodeTeam =
+    Dec.int
+        |> Dec.andThen
+            (\i ->
+                case i of
+                    1 ->
+                        Dec.succeed A
+
+                    2 ->
+                        Dec.succeed B
+
+                    _ ->
+                        Dec.succeed NoTeam
+            )
 
 
 type Route
@@ -177,7 +230,7 @@ view model =
             }
 
         GameInProgress game ->
-            viewGameInProgress game
+            viewGameInProgress model.playerId game
 
 
 viewNotFound : Browser.Document Msg
@@ -196,8 +249,8 @@ viewNotFound =
     }
 
 
-viewGameInProgress : Game -> Browser.Document Msg
-viewGameInProgress g =
+viewGameInProgress : String -> Game -> Browser.Document Msg
+viewGameInProgress playerId g =
     { title = "Codenames Green"
     , body =
         [ viewHeader
@@ -207,9 +260,41 @@ viewGameInProgress g =
                     (\w -> div [ Attr.class "cell" ] [ text w ])
                     g.words
                 )
+            , div [ Attr.id "sidebar" ] (viewSidebar playerId g)
             ]
         ]
     }
+
+
+viewSidebar : String -> Game -> List (Html Msg)
+viewSidebar playerId g =
+    [ viewJoinATeam (playersOnTeam g A) (playersOnTeam g B) ]
+
+
+playersOnTeam : Game -> Team -> Int
+playersOnTeam g team =
+    g.players
+        |> Dict.values
+        |> List.filter (\x -> x.team == team)
+        |> List.length
+
+
+viewJoinATeam : Int -> Int -> Html Msg
+viewJoinATeam a b =
+    div [ Attr.id "join-a-team" ]
+        [ h3 [] [ text "Pick a side" ]
+        , p [] [ text "Pick a side to start playing. Each side has a different key card." ]
+        , div [ Attr.class "buttons" ]
+            [ button []
+                [ span [ Attr.class "call-to-action" ] [ text "Side A" ]
+                , span [ Attr.class "details" ] [ text (String.fromInt a), text " players" ]
+                ]
+            , button []
+                [ span [ Attr.class "call-to-action" ] [ text "Side B" ]
+                , span [ Attr.class "details" ] [ text (String.fromInt b), text " players" ]
+                ]
+            ]
+        ]
 
 
 viewGameLoading : String -> List (Html Msg)
@@ -255,7 +340,7 @@ viewHeader =
 ---- PROGRAM ----
 
 
-main : Program () Model Msg
+main : Program String Model Msg
 main =
     Browser.application
         { view = view
