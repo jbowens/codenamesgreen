@@ -1,4 +1,4 @@
-module Game exposing (Game, Player, Team(..), decodeGame, maybeMakeGame, playersOnTeam, teamOf)
+module Game exposing (Game, Player, Team(..), maybeMakeGame, playersOnTeam, teamOf)
 
 import Dict
 import Http
