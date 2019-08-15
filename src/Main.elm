@@ -2,13 +2,11 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser
 import Browser.Navigation as Nav
-import Dict
+import Game
 import Html exposing (Html, a, button, div, form, h1, h2, h3, img, input, p, span, text)
 import Html.Attributes as Attr
 import Html.Events exposing (onInput, onSubmit)
 import Http
-import Json.Decode as Dec
-import Json.Encode as Enc
 import Loading exposing (LoaderType(..), defaultConfig)
 import Url
 import Url.Builder as UrlBuilder
@@ -31,31 +29,7 @@ type Page
     = NotFound
     | Home String
     | GameLoading String
-    | GameInProgress Game
-
-
-type Team
-    = NoTeam
-    | A
-    | B
-
-
-type alias Game =
-    { seed : Int
-    , round : Int
-    , words : List String
-    , exposedOne : List Bool
-    , exposedTwo : List Bool
-    , players : Dict.Dict String Player
-    , oneLayout : List String
-    , twoLayout : List String
-    }
-
-
-type alias Player =
-    { team : Team
-    , lastSeen : String
-    }
+    | GameInProgress Game.Game Game.Team
 
 
 init : String -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -73,7 +47,7 @@ type Msg
     | UrlChanged Url.Url
     | IdChanged String
     | SubmitNewGame
-    | GotGame (Result Http.Error Game)
+    | GotGame (Result Http.Error Game.Game)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -112,15 +86,16 @@ update msg model =
 
         GotGame (Ok game) ->
             case model.page of
-                GameInProgress _ ->
-                    ( { model | page = GameInProgress game }, Cmd.none )
+                GameInProgress _ t ->
+                    ( { model | page = GameInProgress game t }, Cmd.none )
 
                 GameLoading _ ->
-                    ( { model | page = GameInProgress game }, Cmd.none )
+                    ( { model | page = GameInProgress game Game.NoTeam }, Cmd.none )
 
                 _ ->
                     ( model, Cmd.none )
 
+        -- TODO: display an error message
         GotGame (Err e) ->
             ( model, Cmd.none )
 
@@ -143,58 +118,7 @@ stepUrl url model =
 
 stepGameView : Model -> String -> ( Model, Cmd Msg )
 stepGameView model id =
-    ( { model | page = GameLoading id }, maybeMakeGame id )
-
-
-maybeMakeGame : String -> Cmd Msg
-maybeMakeGame id =
-    Http.post
-        { url = "http://localhost:8080/new-game"
-        , body = Http.jsonBody (Enc.object [ ( "game_id", Enc.string id ) ])
-        , expect = Http.expectJson GotGame decodeGame
-        }
-
-
-teamOf : Game -> String -> Team
-teamOf game playerId =
-    Maybe.withDefault NoTeam (Maybe.map (\p -> p.team) (Dict.get playerId game.players))
-
-
-decodeGame : Dec.Decoder Game
-decodeGame =
-    Dec.map8 Game
-        (Dec.field "state" (Dec.field "seed" Dec.int))
-        (Dec.field "state" (Dec.field "round" Dec.int))
-        (Dec.field "words" (Dec.list Dec.string))
-        (Dec.field "state" (Dec.field "exposed_two" (Dec.list Dec.bool)))
-        (Dec.field "state" (Dec.field "exposed_two" (Dec.list Dec.bool)))
-        (Dec.field "state" (Dec.field "players" (Dec.dict decodePlayer)))
-        (Dec.field "one_layout" (Dec.list Dec.string))
-        (Dec.field "two_layout" (Dec.list Dec.string))
-
-
-decodePlayer : Dec.Decoder Player
-decodePlayer =
-    Dec.map2 Player
-        (Dec.field "team" decodeTeam)
-        (Dec.field "lastSeen" Dec.string)
-
-
-decodeTeam : Dec.Decoder Team
-decodeTeam =
-    Dec.int
-        |> Dec.andThen
-            (\i ->
-                case i of
-                    1 ->
-                        Dec.succeed A
-
-                    2 ->
-                        Dec.succeed B
-
-                    _ ->
-                        Dec.succeed NoTeam
-            )
+    ( { model | page = GameLoading id }, Game.maybeMakeGame id GotGame )
 
 
 type Route
@@ -229,8 +153,8 @@ view model =
             , body = viewGameLoading id
             }
 
-        GameInProgress game ->
-            viewGameInProgress model.playerId game
+        GameInProgress game team ->
+            viewGameInProgress model.playerId game team
 
 
 viewNotFound : Browser.Document Msg
@@ -249,8 +173,8 @@ viewNotFound =
     }
 
 
-viewGameInProgress : String -> Game -> Browser.Document Msg
-viewGameInProgress playerId g =
+viewGameInProgress : String -> Game.Game -> Game.Team -> Browser.Document Msg
+viewGameInProgress playerId g team =
     { title = "Codenames Green"
     , body =
         [ viewHeader
@@ -260,23 +184,15 @@ viewGameInProgress playerId g =
                     (\w -> div [ Attr.class "cell" ] [ text w ])
                     g.words
                 )
-            , div [ Attr.id "sidebar" ] (viewSidebar playerId g)
+            , div [ Attr.id "sidebar" ] (viewSidebar playerId g team)
             ]
         ]
     }
 
 
-viewSidebar : String -> Game -> List (Html Msg)
-viewSidebar playerId g =
-    [ viewJoinATeam (playersOnTeam g A) (playersOnTeam g B) ]
-
-
-playersOnTeam : Game -> Team -> Int
-playersOnTeam g team =
-    g.players
-        |> Dict.values
-        |> List.filter (\x -> x.team == team)
-        |> List.length
+viewSidebar : String -> Game.Game -> Game.Team -> List (Html Msg)
+viewSidebar playerId g team =
+    [ viewJoinATeam (Game.playersOnTeam g Game.A) (Game.playersOnTeam g Game.B) ]
 
 
 viewJoinATeam : Int -> Int -> Html Msg
