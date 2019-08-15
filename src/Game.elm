@@ -1,6 +1,9 @@
-module Game exposing (Cell, Game, Player, Team(..), cells, guess, maybeMakeGame, playersOnTeam, teamOf)
+module Game exposing (Cell, Game, Player, Team(..), cells, guess, maybeMakeGame, playersOnTeam, teamOf, viewBoard, viewKeycard)
 
 import Dict
+import Html exposing (Html, div, text)
+import Html.Attributes as Attr
+import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Dec
 import Json.Encode as Enc
@@ -148,4 +151,85 @@ encodeTeam t =
 
             NoTeam ->
                 0
+        )
+
+
+
+------ VIEW ------
+
+
+viewBoard : Game -> Team -> (Cell -> a) -> Html a
+viewBoard g t msg =
+    div [ Attr.id "board" ]
+        (List.map
+            (\c -> viewCell c t msg)
+            (cells g)
+        )
+
+
+viewCell : Cell -> Team -> (Cell -> a) -> Html a
+viewCell cell team msg =
+    let
+        exposedGreen =
+            cell.a == ( True, "g" ) || cell.b == ( True, "g" )
+
+        exposedBlack =
+            cell.a == ( True, "b" ) || cell.b == ( True, "b" )
+
+        pickable =
+            case team of
+                A ->
+                    not (Tuple.first cell.b) && not exposedGreen && not exposedBlack
+
+                B ->
+                    not (Tuple.first cell.a) && not exposedGreen && not exposedBlack
+
+                NoTeam ->
+                    False
+    in
+    div
+        [ Attr.classList
+            [ ( "cell", True )
+            , ( "green", exposedGreen )
+            , ( "black", exposedBlack )
+            , ( "pickable", pickable )
+            ]
+        , onClick (msg cell)
+        ]
+        [ text cell.word ]
+
+
+viewKeycard : Game -> Team -> Html a
+viewKeycard game team =
+    let
+        mySide =
+            if team == A then
+                game.oneLayout
+
+            else
+                game.twoLayout
+    in
+    div [ Attr.id "key-card" ]
+        (List.map
+            (\c ->
+                div
+                    [ Attr.class "cell"
+                    , Attr.class
+                        (case c of
+                            "g" ->
+                                "green"
+
+                            "b" ->
+                                "black"
+
+                            "t" ->
+                                "tan"
+
+                            _ ->
+                                "unknown"
+                        )
+                    ]
+                    []
+            )
+            mySide
         )

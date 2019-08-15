@@ -201,53 +201,11 @@ viewGameInProgress playerId g team =
     , body =
         [ viewHeader
         , div [ Attr.id "game" ]
-            [ div [ Attr.id "board" ]
-                (List.map
-                    (\c -> viewCell c team)
-                    (Game.cells g)
-                )
+            [ Game.viewBoard g team PickWord
             , div [ Attr.id "sidebar" ] (viewSidebar playerId g team)
             ]
         ]
     }
-
-
-viewCell : Game.Cell -> Game.Team -> Html Msg
-viewCell cell team =
-    let
-        exposedGreen =
-            cell.a == ( True, "g" ) || cell.b == ( True, "g" )
-
-        exposedBlack =
-            cell.a == ( True, "b" ) || cell.b == ( True, "b" )
-
-        pickable =
-            case team of
-                Game.A ->
-                    not (Tuple.first cell.b) && not exposedGreen && not exposedBlack
-
-                Game.B ->
-                    not (Tuple.first cell.a) && not exposedGreen && not exposedBlack
-
-                Game.NoTeam ->
-                    False
-    in
-    div
-        [ Attr.classList
-            [ ( "cell", True )
-            , ( "green", exposedGreen )
-            , ( "black", exposedBlack )
-            , ( "pickable", pickable )
-            ]
-        , onClick
-            (if pickable then
-                PickWord cell
-
-             else
-                NoOp
-            )
-        ]
-        [ text cell.word ]
 
 
 viewSidebar : String -> Game.Game -> Game.Team -> List (Html Msg)
@@ -261,35 +219,7 @@ viewSidebar playerId g team =
 
 viewTeamSidebar : String -> Game.Game -> Game.Team -> List (Html Msg)
 viewTeamSidebar playerId g team =
-    [ div [ Attr.id "key-card" ]
-        (List.map
-            (\c ->
-                div
-                    [ Attr.class "cell"
-                    , Attr.class
-                        (case c of
-                            "g" ->
-                                "green"
-
-                            "b" ->
-                                "black"
-
-                            "t" ->
-                                "tan"
-
-                            _ ->
-                                "unknown"
-                        )
-                    ]
-                    []
-            )
-            (if team == Game.A then
-                g.oneLayout
-
-             else
-                g.twoLayout
-            )
-        )
+    [ Game.viewKeycard g team
     ]
 
 
