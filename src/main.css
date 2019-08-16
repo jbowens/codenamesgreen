@@ -81,6 +81,12 @@ input#game-id {
   flex-wrap: nowrap;
 }
 
+#status {
+  font-size: 1.5em;
+  padding: 1em;
+  font-family: "Exo 2", sans-serif;
+}
+
 #board {
   width: 80%;
   display: grid;

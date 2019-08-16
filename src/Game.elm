@@ -1,4 +1,4 @@
-module Game exposing (Cell, Game, Player, Team(..), cells, guess, maybeMakeGame, playersOnTeam, teamOf, viewBoard, viewKeycard)
+module Game exposing (Cell, Game, Player, Team(..), guess, maybeMakeGame, playersOnTeam, teamOf, viewBoard, viewKeycard, viewStatus)
 
 import Dict
 import Html exposing (Html, div, text)
@@ -43,6 +43,47 @@ type alias Cell =
     , a : ( Bool, String )
     , b : ( Bool, String )
     }
+
+
+remainingGreen : List Cell -> Int
+remainingGreen c =
+    List.foldl
+        (\x a ->
+            case ( x.a, x.b ) of
+                ( ( False, "g" ), ( True, "g" ) ) ->
+                    a
+
+                ( ( True, "g" ), ( False, "g" ) ) ->
+                    a
+
+                ( ( False, "g" ), _ ) ->
+                    a + 1
+
+                ( _, ( False, "g" ) ) ->
+                    a + 1
+
+                _ ->
+                    a
+        )
+        0
+        c
+
+
+exposedBlack : List Cell -> Bool
+exposedBlack c =
+    List.any
+        (\x ->
+            case ( x.a, x.b ) of
+                ( ( True, "b" ), _ ) ->
+                    True
+
+                ( _, ( True, "b" ) ) ->
+                    True
+
+                _ ->
+                    False
+        )
+        c
 
 
 cells : Game -> List Cell
@@ -158,6 +199,28 @@ encodeTeam t =
 ------ VIEW ------
 
 
+viewStatus : Game -> Html a
+viewStatus g =
+    let
+        gameCells =
+            cells g
+
+        greens =
+            remainingGreen gameCells
+    in
+    if exposedBlack gameCells || g.round > 9 then
+        div [ Attr.id "status", Attr.class "lost" ]
+            [ text "You lost :(" ]
+
+    else if greens == 0 then
+        div [ Attr.id "status", Attr.class "won" ]
+            [ text "You won!" ]
+
+    else
+        div [ Attr.id "status", Attr.class "in-progress" ]
+            [ text (String.fromInt (9 - g.round)), text " time tokens, ", text (String.fromInt greens), text " agents remaining" ]
+
+
 viewBoard : Game -> Team -> (Cell -> a) -> Html a
 viewBoard g t msg =
     div [ Attr.id "board" ]
@@ -170,19 +233,19 @@ viewBoard g t msg =
 viewCell : Cell -> Team -> (Cell -> a) -> Html a
 viewCell cell team msg =
     let
-        exposedGreen =
+        green =
             cell.a == ( True, "g" ) || cell.b == ( True, "g" )
 
-        exposedBlack =
+        black =
             cell.a == ( True, "b" ) || cell.b == ( True, "b" )
 
         pickable =
             case team of
                 A ->
-                    not (Tuple.first cell.b) && not exposedGreen && not exposedBlack
+                    not (Tuple.first cell.b) && not green && not black
 
                 B ->
-                    not (Tuple.first cell.a) && not exposedGreen && not exposedBlack
+                    not (Tuple.first cell.a) && not green && not black
 
                 NoTeam ->
                     False
@@ -190,8 +253,8 @@ viewCell cell team msg =
     div
         [ Attr.classList
             [ ( "cell", True )
-            , ( "green", exposedGreen )
-            , ( "black", exposedBlack )
+            , ( "green", green )
+            , ( "black", black )
             , ( "pickable", pickable )
             ]
         , onClick (msg cell)

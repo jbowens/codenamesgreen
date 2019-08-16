@@ -219,7 +219,8 @@ viewSidebar playerId g team =
 
 viewTeamSidebar : String -> Game.Game -> Game.Team -> List (Html Msg)
 viewTeamSidebar playerId g team =
-    [ Game.viewKeycard g team
+    [ Game.viewStatus g
+    , Game.viewKeycard g team
     ]
 
 
