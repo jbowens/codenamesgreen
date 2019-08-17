@@ -112,7 +112,7 @@ input#game-id {
 }
 
 #board .green {
-  background: green;
+  background: #82b34a;
   color: #FFF;
 }
 
@@ -173,5 +173,5 @@ input#game-id {
   background: #D2B48C;
 }
 #key-card .green {
-  background: green;
+  background: #82b34a;
 }

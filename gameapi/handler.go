@@ -24,7 +24,6 @@ func Handler(wordLists map[string][]string) http.Handler {
 		games:     make(map[string]*Game),
 	}
 	h.mux.HandleFunc("/new-game", h.handleNewGame)
-	h.mux.HandleFunc("/game-state", h.handleGameState)
 	h.mux.HandleFunc("/guess", h.handleGuess)
 
 	// Periodically remove games that are old and inactive.
@@ -32,8 +31,8 @@ func Handler(wordLists map[string][]string) http.Handler {
 		for now := range time.Tick(10 * time.Minute) {
 			h.mu.Lock()
 			for id, g := range h.games {
-				g.pruneOldPlayers(now)
-				if len(g.Players) > 0 {
+				remaining := g.pruneOldPlayers(now)
+				if remaining > 0 {
 					continue // at least one player is still in the game
 				}
 				if g.CreatedAt.Add(24 * time.Hour).After(time.Now()) {
@@ -76,8 +75,8 @@ func (h *handler) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 func (h *handler) handleNewGame(rw http.ResponseWriter, req *http.Request) {
 	var body struct {
 		GameID   string   `json:"game_id"`
-		Words    []string `json:"words"`
-		PrevSeed *string  `json:"prev_seed"` // a string because of js number precision
+		Words    []string `json:"words,omitempty"`
+		PrevSeed *string  `json:"prev_seed,omitempty"` // a string because of js number precision
 	}
 	err := json.NewDecoder(req.Body).Decode(&body)
 	if err != nil || body.GameID == "" {
@@ -111,8 +110,8 @@ func (h *handler) handleNewGame(rw http.ResponseWriter, req *http.Request) {
 	if oldGame != nil {
 		// Carry over the players but without teams in case
 		// they want to switch them up.
-		for id, p := range oldGame.Players {
-			game.Players[id] = Player{LastSeen: p.LastSeen}
+		for id, p := range oldGame.players {
+			game.players[id] = Player{LastSeen: p.LastSeen}
 		}
 	}
 
@@ -122,39 +121,14 @@ func (h *handler) handleNewGame(rw http.ResponseWriter, req *http.Request) {
 	writeJSON(rw, g)
 }
 
-// POST /game-state
-func (h *handler) handleGameState(rw http.ResponseWriter, req *http.Request) {
-	var body struct {
-		GameID   string `json:"game_id"`
-		PlayerID string `json:"player_id,omitempty"`
-		Team     int    `json:"team,omitempty"`
-	}
-	err := json.NewDecoder(req.Body).Decode(&body)
-	if err != nil || body.GameID == "" {
-		writeError(rw, "malformed_body", "Unable to parse request body.", 400)
-		return
-	}
-
-	h.mu.Lock()
-	defer h.mu.Unlock()
-	g, ok := h.games[body.GameID]
-	if !ok {
-		writeError(rw, "not_found", "Game not found", 404)
-		return
-	}
-	if body.PlayerID != "" {
-		g.markSeen(body.PlayerID, body.Team, time.Now())
-	}
-	writeJSON(rw, g)
-}
-
 // POST /guess
 func (h *handler) handleGuess(rw http.ResponseWriter, req *http.Request) {
 	var body struct {
-		GameID   string `json:"game_id"`
-		PlayerID string `json:"player_id"`
-		Team     int    `json:"team"`
-		Index    int    `json:"index"`
+		GameID    string `json:"game_id"`
+		PlayerID  string `json:"player_id"`
+		Team      int    `json:"team"`
+		Index     int    `json:"index"`
+		LastEvent int    `json:"last_event"`
 	}
 
 	err := json.NewDecoder(req.Body).Decode(&body)
@@ -170,11 +144,19 @@ func (h *handler) handleGuess(rw http.ResponseWriter, req *http.Request) {
 		writeError(rw, "not_found", "Game not found", 404)
 		return
 	}
+
 	g.markSeen(body.PlayerID, body.Team, time.Now())
 
-	g.markGuess(body.Team, body.Index)
+	g.addEvent(Event{Type: "guess", Team: body.Team, Index: body.Index})
 
-	writeJSON(rw, g)
+	evts, _ := g.eventsSince(body.LastEvent)
+
+	writeJSON(rw, GameUpdate{Seed: g.Seed, Events: evts})
+}
+
+type GameUpdate struct {
+	Seed   int     `json:"seed"`
+	Events []Event `json:"events"`
 }
 
 func writeError(rw http.ResponseWriter, code, message string, statusCode int) {

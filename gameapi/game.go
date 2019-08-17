@@ -3,6 +3,7 @@ package gameapi
 import (
 	"encoding/json"
 	"math/rand"
+	"sync"
 	"time"
 )
 
@@ -33,13 +34,20 @@ func (c Color) MarshalJSON() ([]byte, error) {
 // a Game's state. It's used to recreate games after
 // a process restart.
 type GameState struct {
-	Seed          int64             `json:"seed"`
-	Round         int               `json:"round"`
-	TeamLastGuess int               `json:"team_last_guess"`
-	ExposedOne    []bool            `json:"exposed_one"`
-	ExposedTwo    []bool            `json:"exposed_two"`
-	Players       map[string]Player `json:"players"`
-	WordSet       []string          `json:"word_set"`
+	mu      sync.Mutex        `json:"-"`
+	changed chan struct{}     `json:"-"`
+	players map[string]Player `json:"-"`
+	Seed    int64             `json:"seed"`
+	Events  []Event           `json:"events"`
+	WordSet []string          `json:"word_set"`
+}
+
+type Event struct {
+	Number   int    `json:"number"`
+	Type     string `json:"type"`
+	PlayerID string `json:"player_id"`
+	Team     int    `json:"team"`
+	Index    int    `json:"index"`
 }
 
 type Player struct {
@@ -49,12 +57,11 @@ type Player struct {
 
 func NewState(seed int64, words []string) GameState {
 	return GameState{
-		Seed:       seed,
-		Round:      0,
-		ExposedOne: make([]bool, len(colorDistribution)),
-		ExposedTwo: make([]bool, len(colorDistribution)),
-		Players:    make(map[string]Player),
-		WordSet:    words,
+		changed: make(chan struct{}),
+		players: make(map[string]Player),
+		Seed:    seed,
+		Events:  []Event{},
+		WordSet: words,
 	}
 }
 
@@ -66,46 +73,78 @@ type Game struct {
 	TwoLayout []Color   `json:"two_layout"`
 }
 
-func (g *Game) markGuess(team int, index int) {
-	var opp []bool
-	switch team {
-	case 1:
-		opp = g.ExposedTwo
-	case 2:
-		opp = g.ExposedOne
-	default:
-		return
+func (gs *GameState) addEvent(evt Event) {
+	gs.mu.Lock()
+	defer gs.mu.Unlock()
+	gs.addEventLocked(evt)
+}
+
+func (gs *GameState) addEventLocked(evt Event) {
+	evt.Number = len(gs.Events) + 1
+	gs.Events = append(gs.Events, evt)
+
+	// Notify any waiting goroutines that the game state
+	// has been updated.
+	close(gs.changed)
+	gs.changed = make(chan struct{})
+}
+
+func (gs *GameState) eventsSince(lastSeen int) (evts []Event, next chan struct{}) {
+	gs.mu.Lock()
+	defer gs.mu.Unlock()
+
+	evts = []Event{}
+	for _, e := range gs.Events {
+		if e.Number > lastSeen {
+			evts = append(evts, e)
+		}
 	}
-	if index < 0 || index >= len(opp) {
-		return
-	}
-	opp[index] = true
-	if team != g.TeamLastGuess {
-		g.Round++
-		g.TeamLastGuess = team
-	}
+	return evts, gs.changed
 }
 
 func (g *Game) markSeen(playerID string, team int, when time.Time) {
-	p, ok := g.Players[playerID]
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	p, ok := g.players[playerID]
 	if ok {
 		p.LastSeen = when
-		if team != 0 {
+		if team != 0 && p.Team != team {
 			p.Team = team
+			g.addEventLocked(Event{
+				Type:     "set_team",
+				PlayerID: playerID,
+				Team:     team,
+			})
 		}
-		g.Players[playerID] = p
+		g.players[playerID] = p
 		return
 	}
-	g.Players[playerID] = Player{Team: team, LastSeen: when}
+
+	g.players[playerID] = Player{Team: team, LastSeen: when}
+	g.addEventLocked(Event{
+		Type:     "new_player",
+		PlayerID: playerID,
+		Team:     team,
+	})
 }
 
-func (g *Game) pruneOldPlayers(now time.Time) {
-	for id, player := range g.Players {
+func (g *Game) pruneOldPlayers(now time.Time) (remaining int) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	for id, player := range g.players {
 		if player.LastSeen.Add(50 * time.Second).Before(now) {
-			delete(g.Players, id)
+			delete(g.players, id)
+			g.addEventLocked(Event{
+				Type:     "player_left",
+				PlayerID: id,
+				Team:     player.Team,
+			})
 			continue
 		}
 	}
+	return len(g.players)
 }
 
 func ReconstructGame(state GameState) (g Game) {

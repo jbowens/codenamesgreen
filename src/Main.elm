@@ -2,6 +2,7 @@ module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser
 import Browser.Navigation as Nav
+import Dict
 import Game
 import Html exposing (Html, a, button, div, form, h1, h2, h3, img, input, p, span, text)
 import Html.Attributes as Attr
@@ -29,7 +30,7 @@ type Page
     = NotFound
     | Home String
     | GameLoading String
-    | GameInProgress String Game.Game Game.Team
+    | GameInProgress Game.Model
 
 
 init : String -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -48,8 +49,8 @@ type Msg
     | IdChanged String
     | SubmitNewGame
     | PickTeam Game.Team
-    | PickWord Game.Cell
-    | GotGame (Result Http.Error Game.Game)
+    | GameUpdate Game.Msg
+    | GotGame (Result Http.Error Game.GameData)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -86,33 +87,37 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        GotGame (Ok game) ->
+        GameUpdate gameMsg ->
             case model.page of
-                GameInProgress id _ t ->
-                    ( { model | page = GameInProgress id game t }, Cmd.none )
+                GameInProgress game ->
+                    let
+                        ( newGame, gameCmd ) =
+                            Game.update gameMsg game
+                    in
+                    ( { model | page = GameInProgress newGame }, Cmd.map GameUpdate gameCmd )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        GotGame (Ok data) ->
+            case model.page of
+                GameInProgress old ->
+                    ( { model | page = GameInProgress (Game.init old.id data model.playerId) }, Cmd.none )
 
                 GameLoading id ->
-                    ( { model | page = GameInProgress id game (Game.teamOf game model.playerId) }, Cmd.none )
+                    ( { model | page = GameInProgress (Game.init id data model.playerId) }, Cmd.none )
 
                 _ ->
                     ( model, Cmd.none )
 
         PickTeam team ->
             case model.page of
-                GameInProgress id game _ ->
-                    ( { model | page = GameInProgress id game team }, Cmd.none )
-
-                _ ->
-                    ( model, Cmd.none )
-
-        PickWord cell ->
-            case model.page of
-                GameInProgress id game team ->
-                    if team == Game.NoTeam then
-                        ( model, Cmd.none )
-
-                    else
-                        ( model, Game.guess id model.playerId cell team GotGame )
+                GameInProgress game ->
+                    let
+                        old =
+                            game.player
+                    in
+                    ( { model | page = GameInProgress { game | player = { old | team = team } } }, Cmd.none )
 
                 _ ->
                     ( model, Cmd.none )
@@ -175,8 +180,8 @@ view model =
             , body = viewGameLoading id
             }
 
-        GameInProgress _ game team ->
-            viewGameInProgress model.playerId game team
+        GameInProgress game ->
+            viewGameInProgress game
 
 
 viewNotFound : Browser.Document Msg
@@ -195,32 +200,46 @@ viewNotFound =
     }
 
 
-viewGameInProgress : String -> Game.Game -> Game.Team -> Browser.Document Msg
-viewGameInProgress playerId g team =
+viewGameInProgress : Game.Model -> Browser.Document Msg
+viewGameInProgress g =
     { title = "Codenames Green"
     , body =
         [ viewHeader
         , div [ Attr.id "game" ]
-            [ Game.viewBoard g team PickWord
-            , div [ Attr.id "sidebar" ] (viewSidebar playerId g team)
+            [ Html.map GameUpdate (Game.viewBoard g)
+            , div [ Attr.id "sidebar" ] (viewSidebar g)
             ]
         ]
     }
 
 
-viewSidebar : String -> Game.Game -> Game.Team -> List (Html Msg)
-viewSidebar playerId g team =
-    if team == Game.NoTeam then
-        [ viewJoinATeam (Game.playersOnTeam g Game.A) (Game.playersOnTeam g Game.B) ]
+viewSidebar : Game.Model -> List (Html Msg)
+viewSidebar g =
+    let
+        teams =
+            Dict.values g.players
+
+        playersOnTeamA =
+            teams
+                |> List.filter (\x -> x == Game.A)
+                |> List.length
+
+        playersOnTeamB =
+            teams
+                |> List.filter (\x -> x == Game.B)
+                |> List.length
+    in
+    if g.player.team == Game.NoTeam then
+        [ viewJoinATeam playersOnTeamA playersOnTeamB ]
 
     else
-        viewTeamSidebar playerId g team
+        viewTeamSidebar g
 
 
-viewTeamSidebar : String -> Game.Game -> Game.Team -> List (Html Msg)
-viewTeamSidebar playerId g team =
+viewTeamSidebar : Game.Model -> List (Html Msg)
+viewTeamSidebar g =
     [ Game.viewStatus g
-    , Game.viewKeycard g team
+    , Game.viewKeycard g g.player.team
     ]
 
 

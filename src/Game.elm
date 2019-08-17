@@ -1,5 +1,6 @@
-module Game exposing (Cell, Game, Player, Team(..), guess, maybeMakeGame, playersOnTeam, teamOf, viewBoard, viewKeycard, viewStatus)
+module Game exposing (Cell, GameData, Model, Msg(..), Player, Team(..), init, maybeMakeGame, teamOf, update, viewBoard, viewKeycard, viewStatus)
 
+import Array exposing (Array)
 import Dict
 import Html exposing (Html, div, text)
 import Html.Attributes as Attr
@@ -9,8 +10,68 @@ import Json.Decode as Dec
 import Json.Encode as Enc
 
 
+init : String -> GameData -> String -> Model
+init id data playerId =
+    let
+        model =
+            List.foldl applyEvent
+                { id = id
+                , seed = data.seed
+                , players = Dict.empty
+                , events = []
+                , cells =
+                    List.map3 (\w l1 l2 -> ( w, ( False, l1 ), ( False, l2 ) ))
+                        data.words
+                        data.oneLayout
+                        data.twoLayout
+                        |> List.indexedMap (\i ( w, ( e1, l1 ), ( e2, l2 ) ) -> Cell i w ( e1, l1 ) ( e2, l2 ))
+                        |> Array.fromList
+                , player = { id = playerId, team = NoTeam }
+                }
+                data.events
+
+        player =
+            { id = playerId, team = teamOf model playerId }
+    in
+    { model | player = player }
+
+
 
 ------ MODEL ------
+
+
+type alias Model =
+    { id : String
+    , seed : Int
+    , players : Dict.Dict String Team
+    , events : List Event
+    , cells : Array Cell
+    , player : Player
+    }
+
+
+type alias GameData =
+    { seed : Int
+    , words : List String
+    , events : List Event
+    , oneLayout : List String
+    , twoLayout : List String
+    }
+
+
+type alias Update =
+    { seed : Int
+    , events : List Event
+    }
+
+
+type alias Event =
+    { number : Int
+    , typ : String
+    , playerId : String
+    , team : Team
+    , index : Int
+    }
 
 
 type Team
@@ -19,21 +80,9 @@ type Team
     | B
 
 
-type alias Game =
-    { seed : Int
-    , round : Int
-    , words : List String
-    , exposedOne : List Bool
-    , exposedTwo : List Bool
-    , players : Dict.Dict String Player
-    , oneLayout : List String
-    , twoLayout : List String
-    }
-
-
 type alias Player =
-    { team : Team
-    , lastSeen : String
+    { id : String
+    , team : Team
     }
 
 
@@ -45,9 +94,19 @@ type alias Cell =
     }
 
 
-remainingGreen : List Cell -> Int
+lastEvent : Model -> Int
+lastEvent m =
+    case m.events of
+        [] ->
+            0
+
+        x :: _ ->
+            x.number
+
+
+remainingGreen : Array Cell -> Int
 remainingGreen c =
-    List.foldl
+    Array.foldl
         (\x a ->
             case ( x.a, x.b ) of
                 ( ( False, "g" ), ( True, "g" ) ) ->
@@ -86,48 +145,71 @@ exposedBlack c =
         c
 
 
-cells : Game -> List Cell
-cells g =
-    List.indexedMap
-        (\i ( w, ( e1, l1 ), ( e2, l2 ) ) -> Cell i w ( e1, l1 ) ( e2, l2 ))
-        (List.map5
-            (\w e1 e2 l1 l2 -> ( w, ( e1, l1 ), ( e2, l2 ) ))
-            g.words
-            g.exposedOne
-            g.exposedTwo
-            g.oneLayout
-            g.twoLayout
-        )
+teamOf : Model -> String -> Team
+teamOf model playerId =
+    model.players
+        |> Dict.get playerId
+        |> Maybe.withDefault NoTeam
 
 
-playersOnTeam : Game -> Team -> Int
-playersOnTeam g team =
-    g.players
-        |> Dict.values
-        |> List.filter (\x -> x.team == team)
-        |> List.length
+
+------ UPDATE ------
 
 
-teamOf : Game -> String -> Team
-teamOf game playerId =
-    Maybe.withDefault NoTeam (Maybe.map (\p -> p.team) (Dict.get playerId game.players))
+type Msg
+    = GameUpdate (Result Http.Error Update)
+    | WordPicked Cell
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        GameUpdate (Ok up) ->
+            if up.seed == model.seed then
+                ( List.foldl applyEvent model up.events, Cmd.none )
+
+            else
+                -- TODO: propagate the fact that the game is over
+                ( model, Cmd.none )
+
+        GameUpdate (Err err) ->
+            ( model, Cmd.none )
+
+        WordPicked cell ->
+            ( model, submitGuess model.id model.player cell (lastEvent model) )
+
+
+applyEvent : Event -> Model -> Model
+applyEvent e model =
+    case e.typ of
+        "new_player" ->
+            { model | players = Dict.update e.playerId (\_ -> Just e.team) model.players, events = e :: model.events }
+
+        "player_left" ->
+            { model | players = Dict.update e.playerId (\_ -> Nothing) model.players, events = e :: model.events }
+
+        "set_team" ->
+            { model | players = Dict.update e.playerId (\_ -> Just e.team) model.players, events = e :: model.events }
+
+        _ ->
+            { model | events = e :: model.events }
 
 
 
 ------ NETWORK ------
 
 
-maybeMakeGame : String -> (Result Http.Error Game -> a) -> Cmd a
+maybeMakeGame : String -> (Result Http.Error GameData -> a) -> Cmd a
 maybeMakeGame id msg =
     Http.post
         { url = "http://localhost:8080/new-game"
         , body = Http.jsonBody (Enc.object [ ( "game_id", Enc.string id ) ])
-        , expect = Http.expectJson msg decodeGame
+        , expect = Http.expectJson msg decodeGameData
         }
 
 
-guess : String -> String -> Cell -> Team -> (Result Http.Error Game -> a) -> Cmd a
-guess gameId playerId cell team msg =
+submitGuess : String -> Player -> Cell -> Int -> Cmd Msg
+submitGuess gameId player cell lastEventId =
     Http.post
         { url = "http://localhost:8080/guess"
         , body =
@@ -135,32 +217,40 @@ guess gameId playerId cell team msg =
                 (Enc.object
                     [ ( "game_id", Enc.string gameId )
                     , ( "index", Enc.int cell.index )
-                    , ( "player_id", Enc.string playerId )
-                    , ( "team", encodeTeam team )
+                    , ( "player_id", Enc.string player.id )
+                    , ( "team", encodeTeam player.team )
+                    , ( "last_event", Enc.int lastEventId )
                     ]
                 )
-        , expect = Http.expectJson msg decodeGame
+        , expect = Http.expectJson GameUpdate decodeUpdate
         }
 
 
-decodeGame : Dec.Decoder Game
-decodeGame =
-    Dec.map8 Game
+decodeGameData : Dec.Decoder GameData
+decodeGameData =
+    Dec.map5 GameData
         (Dec.field "state" (Dec.field "seed" Dec.int))
-        (Dec.field "state" (Dec.field "round" Dec.int))
         (Dec.field "words" (Dec.list Dec.string))
-        (Dec.field "state" (Dec.field "exposed_one" (Dec.list Dec.bool)))
-        (Dec.field "state" (Dec.field "exposed_two" (Dec.list Dec.bool)))
-        (Dec.field "state" (Dec.field "players" (Dec.dict decodePlayer)))
+        (Dec.field "state" (Dec.field "events" (Dec.list decodeEvent)))
         (Dec.field "one_layout" (Dec.list Dec.string))
         (Dec.field "two_layout" (Dec.list Dec.string))
 
 
-decodePlayer : Dec.Decoder Player
-decodePlayer =
-    Dec.map2 Player
+decodeUpdate : Dec.Decoder Update
+decodeUpdate =
+    Dec.map2 Update
+        (Dec.field "seed" Dec.int)
+        (Dec.field "events" (Dec.list decodeEvent))
+
+
+decodeEvent : Dec.Decoder Event
+decodeEvent =
+    Dec.map5 Event
+        (Dec.field "number" Dec.int)
+        (Dec.field "type" Dec.string)
+        (Dec.field "player_id" Dec.string)
         (Dec.field "team" decodeTeam)
-        (Dec.field "last_seen" Dec.string)
+        (Dec.field "index" Dec.int)
 
 
 decodeTeam : Dec.Decoder Team
@@ -199,16 +289,14 @@ encodeTeam t =
 ------ VIEW ------
 
 
-viewStatus : Game -> Html a
+viewStatus : Model -> Html a
 viewStatus g =
     let
-        gameCells =
-            cells g
-
         greens =
-            remainingGreen gameCells
+            remainingGreen g.cells
     in
-    if exposedBlack gameCells || g.round > 9 then
+    if exposedBlack (Array.toList g.cells) then
+        -- handle time tokens
         div [ Attr.id "status", Attr.class "lost" ]
             [ text "You lost :(" ]
 
@@ -218,20 +306,20 @@ viewStatus g =
 
     else
         div [ Attr.id "status", Attr.class "in-progress" ]
-            [ text (String.fromInt (9 - g.round)), text " time tokens, ", text (String.fromInt greens), text " agents remaining" ]
+            [ text (String.fromInt greens), text " agents remaining" ]
 
 
-viewBoard : Game -> Team -> (Cell -> a) -> Html a
-viewBoard g t msg =
+viewBoard : Model -> Html Msg
+viewBoard model =
     div [ Attr.id "board" ]
         (List.map
-            (\c -> viewCell c t msg)
-            (cells g)
+            (\c -> viewCell c model.player.team)
+            (Array.toList model.cells)
         )
 
 
-viewCell : Cell -> Team -> (Cell -> a) -> Html a
-viewCell cell team msg =
+viewCell : Cell -> Team -> Html Msg
+viewCell cell team =
     let
         green =
             cell.a == ( True, "g" ) || cell.b == ( True, "g" )
@@ -257,20 +345,20 @@ viewCell cell team msg =
             , ( "black", black )
             , ( "pickable", pickable )
             ]
-        , onClick (msg cell)
+        , onClick (WordPicked cell)
         ]
         [ text cell.word ]
 
 
-viewKeycard : Game -> Team -> Html a
-viewKeycard game team =
+viewKeycard : Model -> Team -> Html a
+viewKeycard model team =
     let
         mySide =
             if team == A then
-                game.oneLayout
+                \c -> Tuple.second c.a
 
             else
-                game.twoLayout
+                \c -> Tuple.second c.b
     in
     div [ Attr.id "key-card" ]
         (List.map
@@ -278,7 +366,7 @@ viewKeycard game team =
                 div
                     [ Attr.class "cell"
                     , Attr.class
-                        (case c of
+                        (case mySide c of
                             "g" ->
                                 "green"
 
@@ -294,5 +382,5 @@ viewKeycard game team =
                     ]
                     []
             )
-            mySide
+            (Array.toList model.cells)
         )
