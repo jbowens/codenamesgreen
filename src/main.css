@@ -175,3 +175,13 @@ input#game-id {
 #key-card .green {
   background: #82b34a;
 }
+
+#event-log {
+  font-size: 0.9em;
+  margin: 1em;
+}
+
+#event-log .events {
+  overflow-y: scroll;
+  height: 10vh;
+}

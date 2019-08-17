@@ -155,7 +155,7 @@ func (h *handler) handleGuess(rw http.ResponseWriter, req *http.Request) {
 }
 
 type GameUpdate struct {
-	Seed   int     `json:"seed"`
+	Seed   int64   `json:"seed"`
 	Events []Event `json:"events"`
 }
 

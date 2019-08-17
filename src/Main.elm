@@ -240,6 +240,7 @@ viewTeamSidebar : Game.Model -> List (Html Msg)
 viewTeamSidebar g =
     [ Game.viewStatus g
     , Game.viewKeycard g g.player.team
+    , Html.map GameUpdate (Game.viewEventLog g)
     ]
 
 

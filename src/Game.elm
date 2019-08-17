@@ -1,8 +1,8 @@
-module Game exposing (Cell, GameData, Model, Msg(..), Player, Team(..), init, maybeMakeGame, teamOf, update, viewBoard, viewKeycard, viewStatus)
+module Game exposing (Cell, GameData, Model, Msg(..), Player, Team(..), init, maybeMakeGame, teamOf, update, viewBoard, viewEventLog, viewKeycard, viewStatus)
 
 import Array exposing (Array)
 import Dict
-import Html exposing (Html, div, text)
+import Html exposing (Html, div, h3, span, text)
 import Html.Attributes as Attr
 import Html.Events exposing (onClick)
 import Http
@@ -176,7 +176,13 @@ update msg model =
             ( model, Cmd.none )
 
         WordPicked cell ->
-            ( model, submitGuess model.id model.player cell (lastEvent model) )
+            ( model
+            , if model.player.team /= NoTeam then
+                submitGuess model.id model.player cell (lastEvent model)
+
+              else
+                Cmd.none
+            )
 
 
 applyEvent : Event -> Model -> Model
@@ -348,6 +354,57 @@ viewCell cell team =
         , onClick (WordPicked cell)
         ]
         [ text cell.word ]
+
+
+viewEventLog : Model -> Html Msg
+viewEventLog model =
+    div [ Attr.id "event-log" ]
+        [ h3 [] [ text "Activity log" ]
+        , div [ Attr.class "events" ]
+            (model.events
+                |> List.concatMap (viewEvent model)
+            )
+        ]
+
+
+viewEvent : Model -> Event -> List (Html Msg)
+viewEvent model e =
+    case e.typ of
+        "new_player" ->
+            [ div [] [ text "A new player has joined the game." ] ]
+
+        "player_left" ->
+            [ div [] [ text "A player has left the game." ] ]
+
+        "guess" ->
+            Array.get e.index model.cells
+                |> Maybe.map
+                    (\c ->
+                        [ div []
+                            [ text "Side "
+                            , text (viewTeam e.team)
+                            , text " tapped "
+                            , span [] [ text c.word ]
+                            ]
+                        ]
+                    )
+                |> Maybe.withDefault []
+
+        _ ->
+            []
+
+
+viewTeam : Team -> String
+viewTeam team =
+    case team of
+        A ->
+            "A"
+
+        B ->
+            "B"
+
+        NoTeam ->
+            "Observer"
 
 
 viewKeycard : Model -> Team -> Html a
