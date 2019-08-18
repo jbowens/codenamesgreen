@@ -9,6 +9,7 @@ import Html.Attributes as Attr
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Http
 import Loading exposing (LoaderType(..), defaultConfig)
+import Team
 import Url
 import Url.Builder as UrlBuilder
 import Url.Parser as Parser exposing ((</>), Parser, map, oneOf, string, top)
@@ -48,7 +49,7 @@ type Msg
     | UrlChanged Url.Url
     | IdChanged String
     | SubmitNewGame
-    | PickTeam Game.Team
+    | PickTeam Team.Team
     | GameUpdate Game.Msg
     | GotGame (Result Http.Error Game.GameData)
 
@@ -221,15 +222,15 @@ viewSidebar g =
 
         playersOnTeamA =
             teams
-                |> List.filter (\x -> x == Game.A)
+                |> List.filter (\x -> x == Team.A)
                 |> List.length
 
         playersOnTeamB =
             teams
-                |> List.filter (\x -> x == Game.B)
+                |> List.filter (\x -> x == Team.B)
                 |> List.length
     in
-    if g.player.team == Game.NoTeam then
+    if g.player.team == Team.None then
         [ viewJoinATeam playersOnTeamA playersOnTeamB ]
 
     else
@@ -250,11 +251,11 @@ viewJoinATeam a b =
         [ h3 [] [ text "Pick a side" ]
         , p [] [ text "Pick a side to start playing. Each side has a different key card." ]
         , div [ Attr.class "buttons" ]
-            [ button [ onClick (PickTeam Game.A) ]
+            [ button [ onClick (PickTeam Team.A) ]
                 [ span [ Attr.class "call-to-action" ] [ text "A" ]
                 , span [ Attr.class "details" ] [ text "(", text (String.fromInt a), text " players)" ]
                 ]
-            , button [ onClick (PickTeam Game.B) ]
+            , button [ onClick (PickTeam Team.B) ]
                 [ span [ Attr.class "call-to-action" ] [ text "B" ]
                 , span [ Attr.class "details" ] [ text "(", text (String.fromInt b), text " players)" ]
                 ]
