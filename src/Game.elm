@@ -164,7 +164,7 @@ applyEvent e model =
             case Array.get e.index model.cells of
                 Just cell ->
                     { model
-                        | cells = Array.set e.index (tapped e.team cell) model.cells
+                        | cells = Array.set e.index (Cell.tapped e.team cell) model.cells
                         , events = e :: model.events
                     }
 
@@ -173,19 +173,6 @@ applyEvent e model =
 
         _ ->
             { model | events = e :: model.events }
-
-
-tapped : Team -> Cell -> Cell
-tapped team cell =
-    case team of
-        Team.B ->
-            { cell | a = ( True, Tuple.second cell.a ) }
-
-        Team.A ->
-            { cell | b = ( True, Tuple.second cell.b ) }
-
-        _ ->
-            cell
 
 
 
@@ -289,15 +276,7 @@ viewCell cell team =
             cell.a == ( True, Color.Black ) || cell.b == ( True, Color.Black )
 
         pickable =
-            case team of
-                Team.A ->
-                    not (Tuple.first cell.b) && not green && not black
-
-                Team.B ->
-                    not (Tuple.first cell.a) && not green && not black
-
-                Team.None ->
-                    False
+            team /= Team.None && not green && not black && not (Cell.isExposed team cell)
     in
     div
         [ Attr.classList
@@ -351,22 +330,15 @@ viewEvent model e =
 
 viewKeycard : Model -> Team -> Html a
 viewKeycard model team =
-    let
-        mySide =
-            if team == Team.A then
-                \c -> Tuple.second c.a
-
-            else
-                \c -> Tuple.second c.b
-    in
     div [ Attr.id "key-card" ]
         (model.cells
             |> Array.toList
+            |> List.map (Cell.side team)
             |> List.map
                 (\c ->
                     div
                         [ Attr.class "cell"
-                        , Attr.class (Color.toString (mySide c))
+                        , Attr.class (Color.toString c)
                         ]
                         []
                 )

@@ -1,4 +1,4 @@
-module Cell exposing (Cell, Display(..), display, isExposed)
+module Cell exposing (Cell, Display(..), display, isExposed, side, tapped)
 
 import Color
 import Team
@@ -35,6 +35,33 @@ display cell =
 
         ( ( exposedA, _ ), ( exposedB, _ ) ) ->
             Hidden exposedA exposedB
+
+
+side : Team.Team -> Cell -> Color.Color
+side team cell =
+    case team of
+        Team.A ->
+            Tuple.second cell.a
+
+        Team.B ->
+            Tuple.second cell.b
+
+        -- TODO: make Team just A and B
+        _ ->
+            Color.Black
+
+
+tapped : Team.Team -> Cell -> Cell
+tapped team cell =
+    case team of
+        Team.B ->
+            { cell | a = ( True, Tuple.second cell.a ) }
+
+        Team.A ->
+            { cell | b = ( True, Tuple.second cell.b ) }
+
+        _ ->
+            cell
 
 
 isExposed : Team.Team -> Cell -> Bool
