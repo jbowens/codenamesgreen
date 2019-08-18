@@ -1,7 +1,7 @@
-module Cell exposing (Cell, Display(..), display, isExposed, side, tapped)
+module Cell exposing (Cell, Display(..), display, isExposed, sideColor, tapped)
 
 import Color
-import Team
+import Side
 
 
 type alias Cell =
@@ -37,41 +37,41 @@ display cell =
             Hidden exposedA exposedB
 
 
-side : Team.Team -> Cell -> Color.Color
-side team cell =
-    case team of
-        Team.A ->
+sideColor : Side.Side -> Cell -> Color.Color
+sideColor side cell =
+    case side of
+        Side.A ->
             Tuple.second cell.a
 
-        Team.B ->
+        Side.B ->
             Tuple.second cell.b
 
-        -- TODO: make Team just A and B
+        -- TODO: make Side just A and B
         _ ->
             Color.Black
 
 
-tapped : Team.Team -> Cell -> Cell
-tapped team cell =
-    case team of
-        Team.B ->
+tapped : Side.Side -> Cell -> Cell
+tapped side cell =
+    case side of
+        Side.B ->
             { cell | a = ( True, Tuple.second cell.a ) }
 
-        Team.A ->
+        Side.A ->
             { cell | b = ( True, Tuple.second cell.b ) }
 
         _ ->
             cell
 
 
-isExposed : Team.Team -> Cell -> Bool
-isExposed team cell =
-    case team of
-        Team.A ->
+isExposed : Side.Side -> Cell -> Bool
+isExposed side cell =
+    case side of
+        Side.A ->
             Tuple.first cell.a
 
-        Team.B ->
+        Side.B ->
             Tuple.first cell.b
 
-        Team.None ->
+        Side.None ->
             False

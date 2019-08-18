@@ -1,4 +1,4 @@
-module Game exposing (GameData, Model, Msg(..), Player, init, maybeMakeGame, teamOf, update, viewBoard, viewEventLog, viewKeycard, viewStatus)
+module Game exposing (GameData, Model, Msg(..), Player, init, maybeMakeGame, sideOf, update, viewBoard, viewEventLog, viewKeycard, viewStatus)
 
 import Array exposing (Array)
 import Cell exposing (Cell)
@@ -10,7 +10,7 @@ import Html.Events exposing (onClick)
 import Http
 import Json.Decode as Dec
 import Json.Encode as Enc
-import Team exposing (Team)
+import Side exposing (Side)
 
 
 init : String -> GameData -> String -> Model
@@ -29,12 +29,12 @@ init id data playerId =
                         data.twoLayout
                         |> List.indexedMap (\i ( w, ( e1, l1 ), ( e2, l2 ) ) -> Cell i w ( e1, l1 ) ( e2, l2 ))
                         |> Array.fromList
-                , player = { id = playerId, team = Team.None }
+                , player = { id = playerId, side = Side.None }
                 }
                 data.events
 
         player =
-            { id = playerId, team = teamOf model playerId }
+            { id = playerId, side = sideOf model playerId }
     in
     { model | player = player }
 
@@ -46,7 +46,7 @@ init id data playerId =
 type alias Model =
     { id : String
     , seed : Int
-    , players : Dict.Dict String Team
+    , players : Dict.Dict String Side
     , events : List Event
     , cells : Array Cell
     , player : Player
@@ -72,14 +72,14 @@ type alias Event =
     { number : Int
     , typ : String
     , playerId : String
-    , team : Team
+    , side : Side
     , index : Int
     }
 
 
 type alias Player =
     { id : String
-    , team : Team
+    , side : Side
     }
 
 
@@ -108,11 +108,11 @@ exposedBlack cells =
         |> List.any (\x -> x == Cell.ExposedBlack)
 
 
-teamOf : Model -> String -> Team
-teamOf model playerId =
+sideOf : Model -> String -> Side
+sideOf model playerId =
     model.players
         |> Dict.get playerId
-        |> Maybe.withDefault Team.None
+        |> Maybe.withDefault Side.None
 
 
 
@@ -140,7 +140,7 @@ update msg model =
 
         WordPicked cell ->
             ( model
-            , if model.player.team /= Team.None && not (Cell.isExposed (Team.opposite model.player.team) cell) then
+            , if model.player.side /= Side.None && not (Cell.isExposed (Side.opposite model.player.side) cell) then
                 submitGuess model.id model.player cell (lastEvent model)
 
               else
@@ -152,19 +152,19 @@ applyEvent : Event -> Model -> Model
 applyEvent e model =
     case e.typ of
         "new_player" ->
-            { model | players = Dict.update e.playerId (\_ -> Just e.team) model.players, events = e :: model.events }
+            { model | players = Dict.update e.playerId (\_ -> Just e.side) model.players, events = e :: model.events }
 
         "player_left" ->
             { model | players = Dict.update e.playerId (\_ -> Nothing) model.players, events = e :: model.events }
 
         "set_team" ->
-            { model | players = Dict.update e.playerId (\_ -> Just e.team) model.players, events = e :: model.events }
+            { model | players = Dict.update e.playerId (\_ -> Just e.side) model.players, events = e :: model.events }
 
         "guess" ->
             case Array.get e.index model.cells of
                 Just cell ->
                     { model
-                        | cells = Array.set e.index (Cell.tapped e.team cell) model.cells
+                        | cells = Array.set e.index (Cell.tapped e.side cell) model.cells
                         , events = e :: model.events
                     }
 
@@ -198,7 +198,7 @@ submitGuess gameId player cell lastEventId =
                     [ ( "game_id", Enc.string gameId )
                     , ( "index", Enc.int cell.index )
                     , ( "player_id", Enc.string player.id )
-                    , ( "team", Team.encode player.team )
+                    , ( "team", Side.encode player.side )
                     , ( "last_event", Enc.int lastEventId )
                     ]
                 )
@@ -229,7 +229,7 @@ decodeEvent =
         (Dec.field "number" Dec.int)
         (Dec.field "type" Dec.string)
         (Dec.field "player_id" Dec.string)
-        (Dec.field "team" Team.decode)
+        (Dec.field "team" Side.decode)
         (Dec.field "index" Dec.int)
 
 
@@ -261,13 +261,13 @@ viewBoard : Model -> Html Msg
 viewBoard model =
     div [ Attr.id "board" ]
         (List.map
-            (\c -> viewCell c model.player.team)
+            (\c -> viewCell c model.player.side)
             (Array.toList model.cells)
         )
 
 
-viewCell : Cell -> Team -> Html Msg
-viewCell cell team =
+viewCell : Cell -> Side -> Html Msg
+viewCell cell side =
     let
         green =
             cell.a == ( True, Color.Green ) || cell.b == ( True, Color.Green )
@@ -276,7 +276,7 @@ viewCell cell team =
             cell.a == ( True, Color.Black ) || cell.b == ( True, Color.Black )
 
         pickable =
-            team /= Team.None && not green && not black && not (Cell.isExposed team cell)
+            side /= Side.None && not green && not black && not (Cell.isExposed side cell)
     in
     div
         [ Attr.classList
@@ -316,7 +316,7 @@ viewEvent model e =
                     (\c ->
                         [ div []
                             [ text "Side "
-                            , text (Team.toString e.team)
+                            , text (Side.toString e.side)
                             , text " tapped "
                             , span [] [ text c.word ]
                             ]
@@ -328,12 +328,12 @@ viewEvent model e =
             []
 
 
-viewKeycard : Model -> Team -> Html a
-viewKeycard model team =
+viewKeycard : Model -> Side -> Html a
+viewKeycard model side =
     div [ Attr.id "key-card" ]
         (model.cells
             |> Array.toList
-            |> List.map (Cell.side team)
+            |> List.map (Cell.sideColor side)
             |> List.map
                 (\c ->
                     div

@@ -1,18 +1,18 @@
-module Team exposing (Team(..), decode, encode, opposite, toString)
+module Side exposing (Side(..), decode, encode, opposite, toString)
 
 import Json.Decode
 import Json.Encode
 
 
-type Team
+type Side
     = None
     | A
     | B
 
 
-toString : Team -> String
-toString team =
-    case team of
+toString : Side -> String
+toString side =
+    case side of
         None ->
             "none"
 
@@ -23,10 +23,10 @@ toString team =
             "B"
 
 
-encode : Team -> Json.Encode.Value
-encode team =
+encode : Side -> Json.Encode.Value
+encode side =
     Json.Encode.int
-        (case team of
+        (case side of
             A ->
                 1
 
@@ -38,7 +38,7 @@ encode team =
         )
 
 
-decode : Json.Decode.Decoder Team
+decode : Json.Decode.Decoder Side
 decode =
     Json.Decode.int
         |> Json.Decode.andThen
@@ -55,9 +55,9 @@ decode =
             )
 
 
-opposite : Team -> Team
-opposite team =
-    case team of
+opposite : Side -> Side
+opposite side =
+    case side of
         None ->
             None
 

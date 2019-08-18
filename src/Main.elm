@@ -9,7 +9,7 @@ import Html.Attributes as Attr
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Http
 import Loading exposing (LoaderType(..), defaultConfig)
-import Team
+import Side
 import Url
 import Url.Builder as UrlBuilder
 import Url.Parser as Parser exposing ((</>), Parser, map, oneOf, string, top)
@@ -49,7 +49,7 @@ type Msg
     | UrlChanged Url.Url
     | IdChanged String
     | SubmitNewGame
-    | PickTeam Team.Team
+    | PickSide Side.Side
     | GameUpdate Game.Msg
     | GotGame (Result Http.Error Game.GameData)
 
@@ -111,14 +111,14 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        PickTeam team ->
+        PickSide side ->
             case model.page of
                 GameInProgress game ->
                     let
                         old =
                             game.player
                     in
-                    ( { model | page = GameInProgress { game | player = { old | team = team } } }, Cmd.none )
+                    ( { model | page = GameInProgress { game | player = { old | side = side } } }, Cmd.none )
 
                 _ ->
                     ( model, Cmd.none )
@@ -217,45 +217,45 @@ viewGameInProgress g =
 viewSidebar : Game.Model -> List (Html Msg)
 viewSidebar g =
     let
-        teams =
+        sides =
             Dict.values g.players
 
-        playersOnTeamA =
-            teams
-                |> List.filter (\x -> x == Team.A)
+        playersOnSideA =
+            sides
+                |> List.filter (\x -> x == Side.A)
                 |> List.length
 
-        playersOnTeamB =
-            teams
-                |> List.filter (\x -> x == Team.B)
+        playersOnSideB =
+            sides
+                |> List.filter (\x -> x == Side.B)
                 |> List.length
     in
-    if g.player.team == Team.None then
-        [ viewJoinATeam playersOnTeamA playersOnTeamB ]
+    if g.player.side == Side.None then
+        [ viewJoinASide playersOnSideA playersOnSideB ]
 
     else
-        viewTeamSidebar g
+        viewActiveSidebar g
 
 
-viewTeamSidebar : Game.Model -> List (Html Msg)
-viewTeamSidebar g =
+viewActiveSidebar : Game.Model -> List (Html Msg)
+viewActiveSidebar g =
     [ Game.viewStatus g
-    , Game.viewKeycard g g.player.team
+    , Game.viewKeycard g g.player.side
     , Html.map GameUpdate (Game.viewEventLog g)
     ]
 
 
-viewJoinATeam : Int -> Int -> Html Msg
-viewJoinATeam a b =
+viewJoinASide : Int -> Int -> Html Msg
+viewJoinASide a b =
     div [ Attr.id "join-a-team" ]
         [ h3 [] [ text "Pick a side" ]
         , p [] [ text "Pick a side to start playing. Each side has a different key card." ]
         , div [ Attr.class "buttons" ]
-            [ button [ onClick (PickTeam Team.A) ]
+            [ button [ onClick (PickSide Side.A) ]
                 [ span [ Attr.class "call-to-action" ] [ text "A" ]
                 , span [ Attr.class "details" ] [ text "(", text (String.fromInt a), text " players)" ]
                 ]
-            , button [ onClick (PickTeam Team.B) ]
+            , button [ onClick (PickSide Side.B) ]
                 [ span [ Attr.class "call-to-action" ] [ text "B" ]
                 , span [ Attr.class "details" ] [ text "(", text (String.fromInt b), text " players)" ]
                 ]
