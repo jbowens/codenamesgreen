@@ -164,7 +164,7 @@ applyEvent e model =
             case Array.get e.index model.cells of
                 Just cell ->
                     { model
-                        | cells = Array.set e.index (tapped model.player.team cell) model.cells
+                        | cells = Array.set e.index (tapped e.team cell) model.cells
                         , events = e :: model.events
                     }
 
