@@ -187,6 +187,10 @@ input#game-id {
   padding: 0.5em;
 }
 
+#event-log .events div {
+  padding: 0.25em 0;
+}
+
 .chat-color {
   font-weight: bold;
 }
