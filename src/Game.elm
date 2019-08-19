@@ -178,29 +178,33 @@ applyUpdate model up =
 
 applyEvent : Event -> Model -> Model
 applyEvent e model =
-    case e.typ of
-        "new_player" ->
-            { model | players = Dict.update e.playerId (\_ -> e.side) model.players, events = e :: model.events }
+    if e.number <= lastEvent model then
+        model
 
-        "player_left" ->
-            { model | players = Dict.update e.playerId (\_ -> Nothing) model.players, events = e :: model.events }
+    else
+        case e.typ of
+            "new_player" ->
+                { model | players = Dict.update e.playerId (\_ -> e.side) model.players, events = e :: model.events }
 
-        "set_team" ->
-            { model | players = Dict.update e.playerId (\_ -> e.side) model.players, events = e :: model.events }
+            "player_left" ->
+                { model | players = Dict.update e.playerId (\_ -> Nothing) model.players, events = e :: model.events }
 
-        "guess" ->
-            case ( Array.get e.index model.cells, e.side ) of
-                ( Just cell, Just side ) ->
-                    { model
-                        | cells = Array.set e.index (Cell.tapped side cell) model.cells
-                        , events = e :: model.events
-                    }
+            "set_team" ->
+                { model | players = Dict.update e.playerId (\_ -> e.side) model.players, events = e :: model.events }
 
-                _ ->
-                    { model | events = e :: model.events }
+            "guess" ->
+                case ( Array.get e.index model.cells, e.side ) of
+                    ( Just cell, Just side ) ->
+                        { model
+                            | cells = Array.set e.index (Cell.tapped side cell) model.cells
+                            , events = e :: model.events
+                        }
 
-        _ ->
-            { model | events = e :: model.events }
+                    _ ->
+                        { model | events = e :: model.events }
+
+            _ ->
+                { model | events = e :: model.events }
 
 
 
