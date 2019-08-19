@@ -87,10 +87,17 @@ view viewerSide msg cell =
                         |> Maybe.withDefault False
             in
             div
-                [ Attr.classList
-                    [ ( "cell", True )
-                    , ( "pickable", pickable )
+                (attrList
+                    [ ( Attr.class "cell", True )
+                    , ( Attr.class "pickable", pickable )
+                    , ( onClick (msg cell), pickable )
                     ]
-                , onClick (msg cell)
-                ]
+                )
                 [ text cell.word ]
+
+
+attrList : List ( Html.Attribute a, Bool ) -> List (Html.Attribute a)
+attrList list =
+    list
+        |> List.filter Tuple.second
+        |> List.map Tuple.first
