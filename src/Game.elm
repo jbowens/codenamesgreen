@@ -7,6 +7,8 @@ import Dict
 import Html exposing (Html, div, h3, span, text)
 import Html.Attributes as Attr
 import Html.Events exposing (onClick)
+import Html.Keyed as Keyed
+import Html.Lazy exposing (lazy3)
 import Http
 import Json.Decode as Dec
 import Json.Encode as Enc
@@ -257,44 +259,22 @@ viewStatus g =
 
 viewBoard : Model -> Html Msg
 viewBoard model =
-    div [ Attr.id "board" ]
-        (List.map
-            (viewCell model.player.side)
-            (Array.toList model.cells)
+    Keyed.node "div"
+        [ Attr.id "board" ]
+        (model.cells
+            |> Array.toList
+            |> List.map (\c -> ( c.word, lazy3 Cell.view model.player.side WordPicked c ))
         )
-
-
-viewCell : Maybe Side -> Cell -> Html Msg
-viewCell viewerSide cell =
-    case Cell.display cell of
-        Cell.ExposedGreen ->
-            div [ Attr.class "cell", Attr.class "green" ] [ text cell.word ]
-
-        Cell.ExposedBlack ->
-            div [ Attr.class "cell", Attr.class "black" ] [ text cell.word ]
-
-        Cell.Hidden guessedA guessedB ->
-            let
-                pickable =
-                    viewerSide
-                        |> Maybe.map (\side -> (side == Side.A && not guessedB) || (side == Side.B && not guessedA))
-                        |> Maybe.withDefault False
-            in
-            div
-                [ Attr.classList
-                    [ ( "cell", True )
-                    , ( "pickable", pickable )
-                    ]
-                , onClick (WordPicked cell)
-                ]
-                [ text cell.word ]
 
 
 viewEventLog : Model -> Html Msg
 viewEventLog model =
     div [ Attr.id "event-log" ]
-        [ h3 [] [ text "Activity log" ]
-        , div [ Attr.class "events" ] (List.concatMap (viewEvent model) model.events)
+        [ div [ Attr.class "events" ]
+            (model.events
+                |> List.reverse
+                |> List.concatMap (viewEvent model)
+            )
         ]
 
 

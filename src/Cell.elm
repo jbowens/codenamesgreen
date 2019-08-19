@@ -1,6 +1,9 @@
-module Cell exposing (Cell, Display(..), display, isExposed, sideColor, tapped)
+module Cell exposing (Cell, Display(..), display, isExposed, sideColor, tapped, view)
 
 import Color
+import Html exposing (Html, div, text)
+import Html.Attributes as Attr
+import Html.Events exposing (onClick)
 import Side
 
 
@@ -65,3 +68,29 @@ isExposed side cell =
 
         Side.B ->
             Tuple.first cell.b
+
+
+view : Maybe Side.Side -> (Cell -> a) -> Cell -> Html a
+view viewerSide msg cell =
+    case display cell of
+        ExposedGreen ->
+            div [ Attr.class "cell", Attr.class "green" ] [ text cell.word ]
+
+        ExposedBlack ->
+            div [ Attr.class "cell", Attr.class "black" ] [ text cell.word ]
+
+        Hidden guessedA guessedB ->
+            let
+                pickable =
+                    viewerSide
+                        |> Maybe.map (\side -> (side == Side.A && not guessedB) || (side == Side.B && not guessedA))
+                        |> Maybe.withDefault False
+            in
+            div
+                [ Attr.classList
+                    [ ( "cell", True )
+                    , ( "pickable", pickable )
+                    ]
+                , onClick (msg cell)
+                ]
+                [ text cell.word ]
