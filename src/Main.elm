@@ -155,7 +155,7 @@ stepUrl url model =
 
 stepGameView : Model -> String -> ( Model, Cmd Msg )
 stepGameView model id =
-    ( { model | page = GameLoading id }, Game.maybeMakeGame id GotGame )
+    ( { model | page = GameLoading id }, Game.maybeMakeGame id Nothing GotGame )
 
 
 type Route

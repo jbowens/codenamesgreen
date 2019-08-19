@@ -223,11 +223,24 @@ applyEvent e model =
 ------ NETWORK ------
 
 
-maybeMakeGame : String -> (Result Http.Error GameData -> a) -> Cmd a
-maybeMakeGame id msg =
+maybeMakeGame : String -> Maybe String -> (Result Http.Error GameData -> a) -> Cmd a
+maybeMakeGame id prevSeed msg =
     Http.post
         { url = "http://localhost:8080/new-game"
-        , body = Http.jsonBody (Enc.object [ ( "game_id", Enc.string id ) ])
+        , body =
+            Http.jsonBody
+                (Enc.object
+                    [ ( "game_id", Enc.string id )
+                    , ( "prev_seed"
+                      , case prevSeed of
+                            Nothing ->
+                                Enc.null
+
+                            Just seed ->
+                                Enc.string seed
+                      )
+                    ]
+                )
         , expect = Http.expectJson msg decodeGameData
         }
 
