@@ -52,7 +52,7 @@ init id data playerId =
 
 type alias Model =
     { id : String
-    , seed : Int
+    , seed : String
     , players : Dict.Dict String Side
     , events : List Event
     , cells : Array Cell
@@ -61,7 +61,7 @@ type alias Model =
 
 
 type alias GameData =
-    { seed : Int
+    { seed : String
     , words : List String
     , events : List Event
     , oneLayout : List Color
@@ -70,7 +70,7 @@ type alias GameData =
 
 
 type alias Update =
-    { seed : Int
+    { seed : String
     , events : List Event
     }
 
@@ -122,7 +122,7 @@ exposedBlack cells =
 
 type Msg
     = NoOp
-    | LongPoll Int (Result Http.Error Update)
+    | LongPoll String (Result Http.Error Update)
     | GameUpdate (Result Http.Error Update)
     | WordPicked Cell
 
@@ -274,7 +274,7 @@ longPollEvents model =
 decodeGameData : Dec.Decoder GameData
 decodeGameData =
     Dec.map5 GameData
-        (Dec.field "state" (Dec.field "seed" Dec.int))
+        (Dec.field "state" (Dec.field "seed" Dec.string))
         (Dec.field "words" (Dec.list Dec.string))
         (Dec.field "state" (Dec.field "events" (Dec.list decodeEvent)))
         (Dec.field "one_layout" (Dec.list Color.decode))
@@ -284,7 +284,7 @@ decodeGameData =
 decodeUpdate : Dec.Decoder Update
 decodeUpdate =
     Dec.map2 Update
-        (Dec.field "seed" Dec.int)
+        (Dec.field "seed" Dec.string)
         (Dec.field "events" (Dec.list decodeEvent))
 
 

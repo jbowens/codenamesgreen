@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -78,7 +77,7 @@ func (h *handler) handleNewGame(rw http.ResponseWriter, req *http.Request) {
 	var body struct {
 		GameID   string   `json:"game_id"`
 		Words    []string `json:"words,omitempty"`
-		PrevSeed *string  `json:"prev_seed,omitempty"` // a string because of js number precision
+		PrevSeed *Seed    `json:"prev_seed,omitempty"` // a string because of js number precision
 	}
 	err := json.NewDecoder(req.Body).Decode(&body)
 	if err != nil || body.GameID == "" {
@@ -93,7 +92,7 @@ func (h *handler) handleNewGame(rw http.ResponseWriter, req *http.Request) {
 	// the existing game's seed so a delayed request doesn't reset an
 	// existing game.
 	oldGame, ok := h.games[body.GameID]
-	if ok && (body.PrevSeed == nil || *body.PrevSeed != strconv.FormatInt(oldGame.Seed, 10)) {
+	if ok && (body.PrevSeed == nil || *body.PrevSeed != oldGame.Seed) {
 		writeJSON(rw, oldGame)
 		return
 	}
@@ -241,7 +240,7 @@ func (h *handler) handleEvents(rw http.ResponseWriter, req *http.Request) {
 }
 
 type GameUpdate struct {
-	Seed   int64   `json:"seed"`
+	Seed   Seed    `json:"seed"`
 	Events []Event `json:"events"`
 }
 

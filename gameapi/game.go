@@ -3,6 +3,7 @@ package gameapi
 import (
 	"encoding/json"
 	"math/rand"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -30,6 +31,26 @@ func (c Color) MarshalJSON() ([]byte, error) {
 	return json.Marshal(c.String())
 }
 
+// Seed wraps an int64 with a custom JSON marshaller to marshal
+// it as a string. We use the full 64-bit range, but Javascript
+// Numbers aren't capable of representing the full range of 64-bit
+// integers, so we always represent it as a string on the client.
+type Seed int64
+
+func (s *Seed) UnmarshalJSON(b []byte) error {
+	var str string
+	if err := json.Unmarshal(b, &str); err != nil {
+		return err
+	}
+	i, err := strconv.ParseInt(str, 10, 64)
+	*s = Seed(i)
+	return err
+}
+
+func (s Seed) MarshalJSON() ([]byte, error) {
+	return json.Marshal(strconv.FormatInt(int64(s), 10))
+}
+
 // GameState encapsulates enough data to reconstruct
 // a Game's state. It's used to recreate games after
 // a process restart.
@@ -37,7 +58,7 @@ type GameState struct {
 	mu      sync.Mutex        `json:"-"`
 	changed chan struct{}     `json:"-"`
 	players map[string]Player `json:"-"`
-	Seed    int64             `json:"seed"`
+	Seed    Seed              `json:"seed"`
 	Events  []Event           `json:"events"`
 	WordSet []string          `json:"word_set"`
 }
@@ -60,7 +81,7 @@ func NewState(seed int64, words []string) GameState {
 	return GameState{
 		changed: make(chan struct{}),
 		players: make(map[string]Player),
-		Seed:    seed,
+		Seed:    Seed(seed),
 		Events:  []Event{},
 		WordSet: words,
 	}
@@ -155,7 +176,7 @@ func ReconstructGame(state GameState) (g Game) {
 		TwoLayout: make([]Color, len(colorDistribution)),
 	}
 
-	rnd := rand.New(rand.NewSource(state.Seed))
+	rnd := rand.New(rand.NewSource(int64(state.Seed)))
 
 	// Pick 25 random words.
 	used := make(map[string]bool, len(colorDistribution))
