@@ -104,10 +104,18 @@ update msg model =
         GotGame (Ok data) ->
             case model.page of
                 GameInProgress old ->
-                    ( { model | page = GameInProgress (Game.init old.id data model.playerId) }, Cmd.none )
+                    let
+                        ( gameModel, gameCmd ) =
+                            Game.init old.id data model.playerId
+                    in
+                    ( { model | page = GameInProgress gameModel }, Cmd.map GameUpdate gameCmd )
 
                 GameLoading id ->
-                    ( { model | page = GameInProgress (Game.init id data model.playerId) }, Cmd.none )
+                    let
+                        ( gameModel, gameCmd ) =
+                            Game.init id data model.playerId
+                    in
+                    ( { model | page = GameInProgress gameModel }, Cmd.map GameUpdate gameCmd )
 
                 _ ->
                     ( model, Cmd.none )

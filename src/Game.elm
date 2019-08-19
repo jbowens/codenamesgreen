@@ -15,7 +15,7 @@ import Json.Encode as Enc
 import Side exposing (Side)
 
 
-init : String -> GameData -> String -> Model
+init : String -> GameData -> String -> ( Model, Cmd Msg )
 init id data playerId =
     let
         model =
@@ -37,8 +37,11 @@ init id data playerId =
 
         player =
             { id = playerId, side = Dict.get playerId model.players }
+
+        modelWithPlayer =
+            { model | player = player }
     in
-    { model | player = player }
+    ( modelWithPlayer, longPollEvents modelWithPlayer )
 
 
 
@@ -116,20 +119,34 @@ exposedBlack cells =
 
 
 type Msg
-    = GameUpdate (Result Http.Error Update)
+    = LongPoll Int (Result Http.Error Update)
+    | GameUpdate (Result Http.Error Update)
     | WordPicked Cell
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        GameUpdate (Ok up) ->
-            if up.seed == model.seed then
-                ( List.foldl applyEvent model up.events, Cmd.none )
+        LongPoll seed result ->
+            let
+                updatedModel =
+                    case result of
+                        Ok up ->
+                            applyUpdate model up
 
-            else
-                -- TODO: propagate the fact that the game is over
-                ( model, Cmd.none )
+                        Err err ->
+                            model
+            in
+            ( updatedModel
+            , if seed == updatedModel.seed then
+                longPollEvents updatedModel
+
+              else
+                Cmd.none
+            )
+
+        GameUpdate (Ok up) ->
+            ( applyUpdate model up, Cmd.none )
 
         GameUpdate (Err err) ->
             ( model, Cmd.none )
@@ -147,6 +164,16 @@ update msg model =
                       else
                         Cmd.none
                     )
+
+
+applyUpdate : Model -> Update -> Model
+applyUpdate model up =
+    if up.seed == model.seed then
+        List.foldl applyEvent model up.events
+
+    else
+        -- TODO: propagate the fact that the game is over
+        model
 
 
 applyEvent : Event -> Model -> Model
@@ -204,6 +231,27 @@ submitGuess gameId player cell lastEventId =
                     ]
                 )
         , expect = Http.expectJson GameUpdate decodeUpdate
+        }
+
+
+longPollEvents : Model -> Cmd Msg
+longPollEvents model =
+    Http.request
+        { method = "POST"
+        , headers = []
+        , url = "http://localhost:8080/events" -- TODO: fix
+        , body =
+            Http.jsonBody
+                (Enc.object
+                    [ ( "game_id", Enc.string model.id )
+                    , ( "player_id", Enc.string model.player.id )
+                    , ( "team", Side.encodeMaybe model.player.side )
+                    , ( "last_event", Enc.int (lastEvent model) )
+                    ]
+                )
+        , expect = Http.expectJson (LongPoll model.seed) decodeUpdate
+        , timeout = Just 45000
+        , tracker = Nothing
         }
 
 
