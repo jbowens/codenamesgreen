@@ -259,15 +259,13 @@ viewBoard : Model -> Html Msg
 viewBoard model =
     div [ Attr.id "board" ]
         (List.map
-            (\c -> viewCell c model.player.side)
+            (viewCell model.player.side)
             (Array.toList model.cells)
         )
 
 
-viewCell : Cell -> Maybe Side -> Html Msg
-viewCell cell viewerSide =
-    --pickable =
-    --side /= Side.None && not green && not black && not (Cell.isExposed side cell)
+viewCell : Maybe Side -> Cell -> Html Msg
+viewCell viewerSide cell =
     case Cell.display cell of
         Cell.ExposedGreen ->
             div [ Attr.class "cell", Attr.class "green" ] [ text cell.word ]
@@ -296,10 +294,7 @@ viewEventLog : Model -> Html Msg
 viewEventLog model =
     div [ Attr.id "event-log" ]
         [ h3 [] [ text "Activity log" ]
-        , div [ Attr.class "events" ]
-            (model.events
-                |> List.concatMap (viewEvent model)
-            )
+        , div [ Attr.class "events" ] (List.concatMap (viewEvent model) model.events)
         ]
 
 
