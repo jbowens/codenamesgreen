@@ -213,8 +213,8 @@ func (h *handler) handleEvents(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	h.mu.Lock()
-	defer h.mu.Unlock()
 	g, ok := h.games[body.GameID]
+	h.mu.Unlock()
 	if !ok {
 		writeError(rw, "not_found", "Game not found", 404)
 		return
