@@ -48,6 +48,7 @@ type Event struct {
 	PlayerID string `json:"player_id"`
 	Team     int    `json:"team"`
 	Index    int    `json:"index"`
+	Message  string `json:"message"`
 }
 
 type Player struct {

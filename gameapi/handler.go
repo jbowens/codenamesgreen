@@ -25,6 +25,7 @@ func Handler(wordLists map[string][]string) http.Handler {
 	}
 	h.mux.HandleFunc("/new-game", h.handleNewGame)
 	h.mux.HandleFunc("/guess", h.handleGuess)
+	h.mux.HandleFunc("/chat", h.handleChat)
 
 	// Periodically remove games that are old and inactive.
 	go func() {
@@ -147,10 +148,51 @@ func (h *handler) handleGuess(rw http.ResponseWriter, req *http.Request) {
 
 	g.markSeen(body.PlayerID, body.Team, time.Now())
 
-	g.addEvent(Event{Type: "guess", Team: body.Team, Index: body.Index})
+	g.addEvent(Event{
+		Type:     "guess",
+		Team:     body.Team,
+		Index:    body.Index,
+		PlayerID: body.PlayerID,
+	})
 
 	evts, _ := g.eventsSince(body.LastEvent)
+	writeJSON(rw, GameUpdate{Seed: g.Seed, Events: evts})
+}
 
+// POST /chat
+func (h *handler) handleChat(rw http.ResponseWriter, req *http.Request) {
+	var body struct {
+		GameID    string `json:"game_id"`
+		PlayerID  string `json:"player_id"`
+		Team      int    `json:"team"`
+		Message   string `json:"message"`
+		LastEvent int    `json:"last_event"`
+	}
+
+	err := json.NewDecoder(req.Body).Decode(&body)
+	if err != nil || body.GameID == "" || body.Team == 0 || body.PlayerID == "" {
+		writeError(rw, "malformed_body", "Unable to parse request body.", 400)
+		return
+	}
+
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	g, ok := h.games[body.GameID]
+	if !ok {
+		writeError(rw, "not_found", "Game not found", 404)
+		return
+	}
+
+	g.markSeen(body.PlayerID, body.Team, time.Now())
+
+	g.addEvent(Event{
+		Type:     "chat",
+		Team:     body.Team,
+		PlayerID: body.PlayerID,
+		Message:  body.Message,
+	})
+
+	evts, _ := g.eventsSince(body.LastEvent)
 	writeJSON(rw, GameUpdate{Seed: g.Seed, Events: evts})
 }
 
