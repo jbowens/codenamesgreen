@@ -181,13 +181,13 @@ input#game-id {
   margin: 1em;
 }
 
-#event-log .events {
+#event-log #events {
   overflow-y: scroll;
   height: 20vh;
   padding: 0.5em;
 }
 
-#event-log .events div {
+#event-log #events div {
   padding: 0.25em 0;
 }
 

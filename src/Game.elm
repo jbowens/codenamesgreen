@@ -1,6 +1,7 @@
 module Game exposing (GameData, Model, Msg(..), Player, init, maybeMakeGame, update, viewBoard, viewEventLog, viewKeycard, viewStatus)
 
 import Array exposing (Array)
+import Browser.Dom as Dom
 import Cell exposing (Cell)
 import Color exposing (Color)
 import Dict
@@ -13,6 +14,7 @@ import Http
 import Json.Decode as Dec
 import Json.Encode as Enc
 import Side exposing (Side)
+import Task
 
 
 init : String -> GameData -> String -> ( Model, Cmd Msg )
@@ -119,7 +121,8 @@ exposedBlack cells =
 
 
 type Msg
-    = LongPoll Int (Result Http.Error Update)
+    = NoOp
+    | LongPoll Int (Result Http.Error Update)
     | GameUpdate (Result Http.Error Update)
     | WordPicked Cell
 
@@ -127,26 +130,26 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        NoOp ->
+            ( model, Cmd.none )
+
         LongPoll seed result ->
-            let
-                updatedModel =
-                    case result of
-                        Ok up ->
+            case ( seed == model.seed, result ) of
+                ( False, _ ) ->
+                    ( model, Cmd.none )
+
+                ( _, Err e ) ->
+                    ( model, Cmd.none )
+
+                ( True, Ok up ) ->
+                    let
+                        ( updatedModel, cmd ) =
                             applyUpdate model up
-
-                        Err err ->
-                            model
-            in
-            ( updatedModel
-            , if seed == updatedModel.seed then
-                longPollEvents updatedModel
-
-              else
-                Cmd.none
-            )
+                    in
+                    ( updatedModel, Cmd.batch [ cmd, longPollEvents updatedModel ] )
 
         GameUpdate (Ok up) ->
-            ( applyUpdate model up, Cmd.none )
+            applyUpdate model up
 
         GameUpdate (Err err) ->
             ( model, Cmd.none )
@@ -166,14 +169,23 @@ update msg model =
                     )
 
 
-applyUpdate : Model -> Update -> Model
+applyUpdate : Model -> Update -> ( Model, Cmd Msg )
 applyUpdate model up =
-    if up.seed == model.seed then
-        List.foldl applyEvent model up.events
+    if up.seed /= model.seed then
+        ( model, Cmd.none )
 
     else
-        -- TODO: propagate the fact that the game is over
-        model
+        let
+            newModel =
+                List.foldl applyEvent model up.events
+        in
+        ( newModel
+        , if lastEvent newModel > lastEvent model then
+            jumpToBottom "events"
+
+          else
+            Cmd.none
+        )
 
 
 applyEvent : Event -> Model -> Model
@@ -291,6 +303,13 @@ decodeEvent =
 ------ VIEW ------
 
 
+jumpToBottom : String -> Cmd Msg
+jumpToBottom id =
+    Dom.getViewportOf id
+        |> Task.andThen (\info -> Dom.setViewportOf id 0 info.scene.height)
+        |> Task.attempt (always NoOp)
+
+
 viewStatus : Model -> Html a
 viewStatus g =
     let
@@ -324,7 +343,7 @@ viewBoard model =
 viewEventLog : Model -> Html Msg
 viewEventLog model =
     div [ Attr.id "event-log" ]
-        [ div [ Attr.class "events" ]
+        [ div [ Attr.id "events" ]
             (model.events
                 |> List.reverse
                 |> List.concatMap (viewEvent model)
