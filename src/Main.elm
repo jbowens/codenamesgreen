@@ -7,6 +7,7 @@ import Game
 import Html exposing (Html, a, button, div, form, h1, h2, h3, img, input, p, span, text)
 import Html.Attributes as Attr
 import Html.Events exposing (onClick, onInput, onSubmit)
+import Html.Lazy exposing (lazy, lazy2)
 import Http
 import Loading exposing (LoaderType(..), defaultConfig)
 import Side
@@ -240,9 +241,9 @@ viewSidebar g =
 
 viewActiveSidebar : Game.Model -> Side.Side -> List (Html Msg)
 viewActiveSidebar g side =
-    [ Game.viewStatus g
-    , Game.viewKeycard g side
-    , Html.map GameUpdate (Game.viewEventLog g)
+    [ lazy Game.viewStatus g
+    , lazy2 Game.viewKeycard g side
+    , Html.map GameUpdate (lazy Game.viewEventLog g)
     ]
 
 
