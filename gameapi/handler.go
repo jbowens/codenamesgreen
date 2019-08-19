@@ -26,6 +26,7 @@ func Handler(wordLists map[string][]string) http.Handler {
 	h.mux.HandleFunc("/new-game", h.handleNewGame)
 	h.mux.HandleFunc("/guess", h.handleGuess)
 	h.mux.HandleFunc("/chat", h.handleChat)
+	h.mux.HandleFunc("/events", h.handleEvents)
 
 	// Periodically remove games that are old and inactive.
 	go func() {
@@ -193,6 +194,49 @@ func (h *handler) handleChat(rw http.ResponseWriter, req *http.Request) {
 	})
 
 	evts, _ := g.eventsSince(body.LastEvent)
+	writeJSON(rw, GameUpdate{Seed: g.Seed, Events: evts})
+}
+
+// POST /events
+func (h *handler) handleEvents(rw http.ResponseWriter, req *http.Request) {
+	var body struct {
+		GameID    string `json:"game_id"`
+		PlayerID  string `json:"player_id"`
+		Team      int    `json:"team"`
+		LastEvent int    `json:"last_event"`
+	}
+
+	err := json.NewDecoder(req.Body).Decode(&body)
+	if err != nil || body.GameID == "" || body.Team == 0 || body.PlayerID == "" {
+		writeError(rw, "malformed_body", "Unable to parse request body.", 400)
+		return
+	}
+
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	g, ok := h.games[body.GameID]
+	if !ok {
+		writeError(rw, "not_found", "Game not found", 404)
+		return
+	}
+
+	g.markSeen(body.PlayerID, body.Team, time.Now())
+
+	evts, ch := g.eventsSince(body.LastEvent)
+	if len(evts) > 0 {
+		writeJSON(rw, GameUpdate{Seed: g.Seed, Events: evts})
+		return
+	}
+
+	// Wait until a new event becomes available, the client
+	// gives up, or we time out.
+	select {
+	case <-ch:
+		evts, _ = g.eventsSince(body.LastEvent)
+
+	case <-req.Context().Done():
+	case <-time.After(25 * time.Second):
+	}
 	writeJSON(rw, GameUpdate{Seed: g.Seed, Events: evts})
 }
 
