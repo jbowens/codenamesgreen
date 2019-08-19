@@ -46,10 +46,6 @@ sideColor side cell =
         Side.B ->
             Tuple.second cell.b
 
-        -- TODO: make Side just A and B
-        _ ->
-            Color.Black
-
 
 tapped : Side.Side -> Cell -> Cell
 tapped side cell =
@@ -60,9 +56,6 @@ tapped side cell =
         Side.A ->
             { cell | b = ( True, Tuple.second cell.b ) }
 
-        _ ->
-            cell
-
 
 isExposed : Side.Side -> Cell -> Bool
 isExposed side cell =
@@ -72,6 +65,3 @@ isExposed side cell =
 
         Side.B ->
             Tuple.first cell.b
-
-        Side.None ->
-            False

@@ -118,7 +118,7 @@ update msg model =
                         old =
                             game.player
                     in
-                    ( { model | page = GameInProgress { game | player = { old | side = side } } }, Cmd.none )
+                    ( { model | page = GameInProgress { game | player = { old | side = Just side } } }, Cmd.none )
 
                 _ ->
                     ( model, Cmd.none )
@@ -230,17 +230,18 @@ viewSidebar g =
                 |> List.filter (\x -> x == Side.B)
                 |> List.length
     in
-    if g.player.side == Side.None then
-        [ viewJoinASide playersOnSideA playersOnSideB ]
+    case g.player.side of
+        Nothing ->
+            [ viewJoinASide playersOnSideA playersOnSideB ]
 
-    else
-        viewActiveSidebar g
+        Just side ->
+            viewActiveSidebar g side
 
 
-viewActiveSidebar : Game.Model -> List (Html Msg)
-viewActiveSidebar g =
+viewActiveSidebar : Game.Model -> Side.Side -> List (Html Msg)
+viewActiveSidebar g side =
     [ Game.viewStatus g
-    , Game.viewKeycard g g.player.side
+    , Game.viewKeycard g side
     , Html.map GameUpdate (Game.viewEventLog g)
     ]
 

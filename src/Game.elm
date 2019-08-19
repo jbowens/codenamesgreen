@@ -1,4 +1,4 @@
-module Game exposing (GameData, Model, Msg(..), Player, init, maybeMakeGame, sideOf, update, viewBoard, viewEventLog, viewKeycard, viewStatus)
+module Game exposing (GameData, Model, Msg(..), Player, init, maybeMakeGame, update, viewBoard, viewEventLog, viewKeycard, viewStatus)
 
 import Array exposing (Array)
 import Cell exposing (Cell)
@@ -29,12 +29,12 @@ init id data playerId =
                         data.twoLayout
                         |> List.indexedMap (\i ( w, ( e1, l1 ), ( e2, l2 ) ) -> Cell i w ( e1, l1 ) ( e2, l2 ))
                         |> Array.fromList
-                , player = { id = playerId, side = Side.None }
+                , player = { id = playerId, side = Nothing }
                 }
                 data.events
 
         player =
-            { id = playerId, side = sideOf model playerId }
+            { id = playerId, side = Dict.get playerId model.players }
     in
     { model | player = player }
 
@@ -72,14 +72,14 @@ type alias Event =
     { number : Int
     , typ : String
     , playerId : String
-    , side : Side
+    , side : Maybe Side
     , index : Int
     }
 
 
 type alias Player =
     { id : String
-    , side : Side
+    , side : Maybe Side
     }
 
 
@@ -108,13 +108,6 @@ exposedBlack cells =
         |> List.any (\x -> x == Cell.ExposedBlack)
 
 
-sideOf : Model -> String -> Side
-sideOf model playerId =
-    model.players
-        |> Dict.get playerId
-        |> Maybe.withDefault Side.None
-
-
 
 ------ UPDATE ------
 
@@ -139,36 +132,41 @@ update msg model =
             ( model, Cmd.none )
 
         WordPicked cell ->
-            ( model
-            , if model.player.side /= Side.None && not (Cell.isExposed (Side.opposite model.player.side) cell) then
-                submitGuess model.id model.player cell (lastEvent model)
+            case model.player.side of
+                Nothing ->
+                    ( model, Cmd.none )
 
-              else
-                Cmd.none
-            )
+                Just side ->
+                    ( model
+                    , if not (Cell.isExposed (Side.opposite side) cell) then
+                        submitGuess model.id model.player cell (lastEvent model)
+
+                      else
+                        Cmd.none
+                    )
 
 
 applyEvent : Event -> Model -> Model
 applyEvent e model =
     case e.typ of
         "new_player" ->
-            { model | players = Dict.update e.playerId (\_ -> Just e.side) model.players, events = e :: model.events }
+            { model | players = Dict.update e.playerId (\_ -> e.side) model.players, events = e :: model.events }
 
         "player_left" ->
             { model | players = Dict.update e.playerId (\_ -> Nothing) model.players, events = e :: model.events }
 
         "set_team" ->
-            { model | players = Dict.update e.playerId (\_ -> Just e.side) model.players, events = e :: model.events }
+            { model | players = Dict.update e.playerId (\_ -> e.side) model.players, events = e :: model.events }
 
         "guess" ->
-            case Array.get e.index model.cells of
-                Just cell ->
+            case ( Array.get e.index model.cells, e.side ) of
+                ( Just cell, Just side ) ->
                     { model
-                        | cells = Array.set e.index (Cell.tapped e.side cell) model.cells
+                        | cells = Array.set e.index (Cell.tapped side cell) model.cells
                         , events = e :: model.events
                     }
 
-                Nothing ->
+                _ ->
                     { model | events = e :: model.events }
 
         _ ->
@@ -198,7 +196,7 @@ submitGuess gameId player cell lastEventId =
                     [ ( "game_id", Enc.string gameId )
                     , ( "index", Enc.int cell.index )
                     , ( "player_id", Enc.string player.id )
-                    , ( "team", Side.encode player.side )
+                    , ( "team", Side.encodeMaybe player.side )
                     , ( "last_event", Enc.int lastEventId )
                     ]
                 )
@@ -229,7 +227,7 @@ decodeEvent =
         (Dec.field "number" Dec.int)
         (Dec.field "type" Dec.string)
         (Dec.field "player_id" Dec.string)
-        (Dec.field "team" Side.decode)
+        (Dec.field "team" Side.decodeMaybe)
         (Dec.field "index" Dec.int)
 
 
@@ -266,28 +264,32 @@ viewBoard model =
         )
 
 
-viewCell : Cell -> Side -> Html Msg
-viewCell cell side =
-    let
-        green =
-            cell.a == ( True, Color.Green ) || cell.b == ( True, Color.Green )
+viewCell : Cell -> Maybe Side -> Html Msg
+viewCell cell viewerSide =
+    --pickable =
+    --side /= Side.None && not green && not black && not (Cell.isExposed side cell)
+    case Cell.display cell of
+        Cell.ExposedGreen ->
+            div [ Attr.class "cell", Attr.class "green" ] [ text cell.word ]
 
-        black =
-            cell.a == ( True, Color.Black ) || cell.b == ( True, Color.Black )
+        Cell.ExposedBlack ->
+            div [ Attr.class "cell", Attr.class "black" ] [ text cell.word ]
 
-        pickable =
-            side /= Side.None && not green && not black && not (Cell.isExposed side cell)
-    in
-    div
-        [ Attr.classList
-            [ ( "cell", True )
-            , ( "green", green )
-            , ( "black", black )
-            , ( "pickable", pickable )
-            ]
-        , onClick (WordPicked cell)
-        ]
-        [ text cell.word ]
+        Cell.Hidden guessedA guessedB ->
+            let
+                pickable =
+                    viewerSide
+                        |> Maybe.map (\side -> (side == Side.A && not guessedB) || (side == Side.B && not guessedA))
+                        |> Maybe.withDefault False
+            in
+            div
+                [ Attr.classList
+                    [ ( "cell", True )
+                    , ( "pickable", pickable )
+                    ]
+                , onClick (WordPicked cell)
+                ]
+                [ text cell.word ]
 
 
 viewEventLog : Model -> Html Msg
@@ -312,16 +314,17 @@ viewEvent model e =
 
         "guess" ->
             Array.get e.index model.cells
-                |> Maybe.map
-                    (\c ->
+                |> Maybe.map2
+                    (\s c ->
                         [ div []
                             [ text "Side "
-                            , text (Side.toString e.side)
+                            , text (Side.toString s)
                             , text " tapped "
                             , span [] [ text c.word ]
                             ]
                         ]
                     )
+                    e.side
                 |> Maybe.withDefault []
 
         _ ->
