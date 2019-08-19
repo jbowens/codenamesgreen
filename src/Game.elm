@@ -195,14 +195,11 @@ applyEvent e model =
 
     else
         case e.typ of
-            "new_player" ->
+            "join_side" ->
                 { model | players = Dict.update e.playerId (\_ -> e.side) model.players, events = e :: model.events }
 
             "player_left" ->
                 { model | players = Dict.update e.playerId (\_ -> Nothing) model.players, events = e :: model.events }
-
-            "set_team" ->
-                { model | players = Dict.update e.playerId (\_ -> e.side) model.players, events = e :: model.events }
 
             "guess" ->
                 case ( Array.get e.index model.cells, e.side ) of
@@ -367,8 +364,13 @@ viewEventLog model =
 viewEvent : Model -> Event -> List (Html Msg)
 viewEvent model e =
     case e.typ of
-        "new_player" ->
-            [ div [] [ text "A new player has joined the game." ] ]
+        "join_side" ->
+            [ div []
+                [ text "A new player has joined side "
+                , text (e.side |> Maybe.map Side.toString |> Maybe.withDefault "")
+                , text "."
+                ]
+            ]
 
         "player_left" ->
             [ div [] [ text "A player has left the game." ] ]

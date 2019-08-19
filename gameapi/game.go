@@ -134,7 +134,7 @@ func (g *Game) markSeen(playerID string, team int, when time.Time) {
 		if team != 0 && p.Team != team {
 			p.Team = team
 			g.addEventLocked(Event{
-				Type:     "set_team",
+				Type:     "join_side",
 				PlayerID: playerID,
 				Team:     team,
 			})
@@ -144,11 +144,13 @@ func (g *Game) markSeen(playerID string, team int, when time.Time) {
 	}
 
 	g.players[playerID] = Player{Team: team, LastSeen: when}
-	g.addEventLocked(Event{
-		Type:     "new_player",
-		PlayerID: playerID,
-		Team:     team,
-	})
+	if team != 0 {
+		g.addEventLocked(Event{
+			Type:     "join_side",
+			PlayerID: playerID,
+			Team:     team,
+		})
+	}
 }
 
 func (g *Game) pruneOldPlayers(now time.Time) (remaining int) {
@@ -158,11 +160,13 @@ func (g *Game) pruneOldPlayers(now time.Time) (remaining int) {
 	for id, player := range g.players {
 		if player.LastSeen.Add(50 * time.Second).Before(now) {
 			delete(g.players, id)
-			g.addEventLocked(Event{
-				Type:     "player_left",
-				PlayerID: id,
-				Team:     player.Team,
-			})
+			if player.Team != 0 {
+				g.addEventLocked(Event{
+					Type:     "player_left",
+					PlayerID: id,
+					Team:     player.Team,
+				})
+			}
 			continue
 		}
 	}
