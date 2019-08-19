@@ -170,7 +170,7 @@ func (h *handler) handleChat(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	err := json.NewDecoder(req.Body).Decode(&body)
-	if err != nil || body.GameID == "" || body.Team == 0 || body.PlayerID == "" {
+	if err != nil || body.GameID == "" || body.Team == 0 || body.PlayerID == "" || body.Message == "" {
 		writeError(rw, "malformed_body", "Unable to parse request body.", 400)
 		return
 	}

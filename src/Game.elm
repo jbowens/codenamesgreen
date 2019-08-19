@@ -76,6 +76,7 @@ type alias Event =
     , playerId : String
     , side : Maybe Side
     , index : Int
+    , message : String
     }
 
 
@@ -225,12 +226,13 @@ decodeUpdate =
 
 decodeEvent : Dec.Decoder Event
 decodeEvent =
-    Dec.map5 Event
+    Dec.map6 Event
         (Dec.field "number" Dec.int)
         (Dec.field "type" Dec.string)
         (Dec.field "player_id" Dec.string)
         (Dec.field "team" Side.decodeMaybe)
         (Dec.field "index" Dec.int)
+        (Dec.field "message" Dec.string)
 
 
 
@@ -301,6 +303,9 @@ viewEvent model e =
                     )
                     e.side
                 |> Maybe.withDefault []
+
+        "chat" ->
+            [ div [] [ text e.message ] ]
 
         _ ->
             []
