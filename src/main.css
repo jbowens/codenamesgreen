@@ -186,3 +186,16 @@ input#game-id {
   height: 20vh;
   padding: 0.5em;
 }
+
+.chat-color {
+  font-weight: bold;
+}
+#event-log .green {
+  color: #82b34a;
+}
+#event-log .tan {
+  color: #D2B48C;
+}
+#event-log .black {
+  color: #000;
+}

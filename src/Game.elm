@@ -297,7 +297,8 @@ viewEvent model e =
                             [ text "Side "
                             , text (Side.toString s)
                             , text " tapped "
-                            , span [] [ text c.word ]
+                            , span [ Attr.class "chat-color", Attr.class (Color.toString (Cell.sideColor (Side.opposite s) c)) ] [ text c.word ]
+                            , text "."
                             ]
                         ]
                     )
