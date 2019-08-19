@@ -43,7 +43,7 @@ init id data playerId =
         modelWithPlayer =
             { model | player = player }
     in
-    ( modelWithPlayer, longPollEvents modelWithPlayer )
+    ( modelWithPlayer, Cmd.batch [ longPollEvents modelWithPlayer, jumpToBottom "events" ] )
 
 
 
