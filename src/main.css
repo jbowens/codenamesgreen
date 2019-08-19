@@ -203,3 +203,6 @@ input#game-id {
 #event-log .black {
   color: #000;
 }
+#next-game {
+  margin: 1em;
+}

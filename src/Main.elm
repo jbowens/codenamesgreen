@@ -50,6 +50,7 @@ type Msg
     | UrlChanged Url.Url
     | IdChanged String
     | SubmitNewGame
+    | NextGame
     | PickSide Side.Side
     | GameUpdate Game.Msg
     | GotGame (Result Http.Error Game.GameData)
@@ -85,6 +86,14 @@ update msg model =
             case model.page of
                 Home id ->
                     ( model, Nav.pushUrl model.key (UrlBuilder.relative [ id ] []) )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        NextGame ->
+            case model.page of
+                GameInProgress game ->
+                    stepGameView model game.id (Just game.seed)
 
                 _ ->
                     ( model, Cmd.none )
@@ -150,12 +159,12 @@ stepUrl url model =
             ( { model | page = Home "" }, Cmd.none )
 
         GameView id ->
-            stepGameView model id
+            stepGameView model id Nothing
 
 
-stepGameView : Model -> String -> ( Model, Cmd Msg )
-stepGameView model id =
-    ( { model | page = GameLoading id }, Game.maybeMakeGame id Nothing GotGame )
+stepGameView : Model -> String -> Maybe String -> ( Model, Cmd Msg )
+stepGameView model id prevSeed =
+    ( { model | page = GameLoading id }, Game.maybeMakeGame id prevSeed GotGame )
 
 
 type Route
@@ -252,7 +261,14 @@ viewActiveSidebar g side =
     [ lazy Game.viewStatus g
     , lazy2 Game.viewKeycard g side
     , Html.map GameUpdate (lazy Game.viewEventLog g)
+    , viewNextGameButton
     ]
+
+
+viewNextGameButton : Html Msg
+viewNextGameButton =
+    div [ Attr.id "next-game" ]
+        [ button [ onClick NextGame ] [ text "Next game" ] ]
 
 
 viewJoinASide : Int -> Int -> Html Msg
