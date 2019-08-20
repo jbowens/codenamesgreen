@@ -17,8 +17,8 @@ import Side exposing (Side)
 import Task
 
 
-init : String -> GameData -> String -> ( Model, Cmd Msg )
-init id data playerId =
+init : String -> GameData -> String -> String -> ( Model, Cmd Msg )
+init id data playerId apiUrl =
     let
         model =
             List.foldl applyEvent
@@ -34,6 +34,7 @@ init id data playerId =
                         |> List.indexedMap (\i ( w, ( e1, l1 ), ( e2, l2 ) ) -> Cell i w ( e1, l1 ) ( e2, l2 ))
                         |> Array.fromList
                 , player = { id = playerId, side = Nothing }
+                , apiUrl = apiUrl
                 }
                 data.events
 
@@ -57,6 +58,7 @@ type alias Model =
     , events : List Event
     , cells : Array Cell
     , player : Player
+    , apiUrl : String
     }
 
 
@@ -162,7 +164,7 @@ update msg model =
                 Just side ->
                     ( model
                     , if not (Cell.isExposed (Side.opposite side) cell) then
-                        submitGuess model.id model.player cell (lastEvent model)
+                        submitGuess model.apiUrl model.id model.player cell (lastEvent model)
 
                       else
                         Cmd.none
@@ -220,10 +222,10 @@ applyEvent e model =
 ------ NETWORK ------
 
 
-maybeMakeGame : String -> Maybe String -> (Result Http.Error GameData -> a) -> Cmd a
-maybeMakeGame id prevSeed msg =
+maybeMakeGame : String -> String -> Maybe String -> (Result Http.Error GameData -> a) -> Cmd a
+maybeMakeGame apiUrl id prevSeed msg =
     Http.post
-        { url = "http://localhost:8080/new-game"
+        { url = apiUrl ++ "/new-game"
         , body =
             Http.jsonBody
                 (Enc.object
@@ -242,10 +244,10 @@ maybeMakeGame id prevSeed msg =
         }
 
 
-submitGuess : String -> Player -> Cell -> Int -> Cmd Msg
-submitGuess gameId player cell lastEventId =
+submitGuess : String -> String -> Player -> Cell -> Int -> Cmd Msg
+submitGuess apiUrl gameId player cell lastEventId =
     Http.post
-        { url = "http://localhost:8080/guess"
+        { url = apiUrl ++ "/guess"
         , body =
             Http.jsonBody
                 (Enc.object
@@ -265,7 +267,7 @@ longPollEvents model =
     Http.request
         { method = "POST"
         , headers = []
-        , url = "http://localhost:8080/events" -- TODO: fix
+        , url = model.apiUrl ++ "/events"
         , body =
             Http.jsonBody
                 (Enc.object

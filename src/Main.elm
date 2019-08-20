@@ -25,6 +25,7 @@ type alias Model =
     { key : Nav.Key
     , playerId : String
     , page : Page
+    , apiUrl : String
     }
 
 
@@ -37,7 +38,17 @@ type Page
 
 init : String -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init playerId url key =
-    stepUrl url { key = key, playerId = playerId, page = Home "" }
+    stepUrl url { key = key, playerId = playerId, page = Home "", apiUrl = apiUrl url }
+
+
+apiUrl : Url.Url -> String
+apiUrl url =
+    case url.host of
+        "localhost" ->
+            Url.toString { url | port_ = Just 8080, path = "", query = Nothing, fragment = Nothing }
+
+        _ ->
+            Url.toString { url | host = "api." ++ url.host, path = "", query = Nothing, fragment = Nothing }
 
 
 
@@ -115,14 +126,14 @@ update msg model =
                 GameInProgress old ->
                     let
                         ( gameModel, gameCmd ) =
-                            Game.init old.id data model.playerId
+                            Game.init old.id data model.playerId model.apiUrl
                     in
                     ( { model | page = GameInProgress gameModel }, Cmd.map GameUpdate gameCmd )
 
                 GameLoading id ->
                     let
                         ( gameModel, gameCmd ) =
-                            Game.init id data model.playerId
+                            Game.init id data model.playerId model.apiUrl
                     in
                     ( { model | page = GameInProgress gameModel }, Cmd.map GameUpdate gameCmd )
 
@@ -164,7 +175,7 @@ stepUrl url model =
 
 stepGameView : Model -> String -> Maybe String -> ( Model, Cmd Msg )
 stepGameView model id prevSeed =
-    ( { model | page = GameLoading id }, Game.maybeMakeGame id prevSeed GotGame )
+    ( { model | page = GameLoading id }, Game.maybeMakeGame model.apiUrl id prevSeed GotGame )
 
 
 type Route
