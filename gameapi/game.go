@@ -153,6 +153,29 @@ func (g *Game) markSeen(playerID string, team int, when time.Time) {
 	}
 }
 
+func (g *Game) guess(playerID string, team, index int, when time.Time) {
+	g.markSeen(playerID, team, when)
+
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
+	// If there's an existing, identical guess event then ignore
+	// this guess. Duplicate events may happen if multiple players
+	// tap at approximately the same moment.
+	for _, e := range g.Events {
+		if e.Type == "guess" && e.Index == index && e.Team == team {
+			return
+		}
+	}
+
+	g.addEventLocked(Event{
+		Type:     "guess",
+		Team:     team,
+		Index:    index,
+		PlayerID: playerID,
+	})
+}
+
 func (g *Game) pruneOldPlayers(now time.Time) (remaining int) {
 	g.mu.Lock()
 	defer g.mu.Unlock()

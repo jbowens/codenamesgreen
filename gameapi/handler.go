@@ -146,14 +146,7 @@ func (h *handler) handleGuess(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	g.markSeen(body.PlayerID, body.Team, time.Now())
-
-	g.addEvent(Event{
-		Type:     "guess",
-		Team:     body.Team,
-		Index:    body.Index,
-		PlayerID: body.PlayerID,
-	})
+	g.guess(body.PlayerID, body.Team, body.Index, time.Now())
 
 	evts, _ := g.eventsSince(body.LastEvent)
 	writeJSON(rw, GameUpdate{Seed: g.Seed, Events: evts})
