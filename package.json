@@ -6,7 +6,9 @@
   "author": "Jackson Owens <jackson_owens@alumni.brown.edu>",
   "license": "MIT",
   "devDependencies": {
+    "cssnano": "^4.1.10",
     "elm-hot": "^1.1.1",
-    "node-elm-compiler": "^5.0.4"
+    "node-elm-compiler": "^5.0.4",
+    "parcel-bundler": "1.12.3"
   }
 }
