@@ -47,6 +47,9 @@ apiUrl url =
         "localhost" ->
             Url.toString { url | port_ = Just 8080, path = "", query = Nothing, fragment = Nothing }
 
+        "www.codenamesgreen.com" ->
+            Url.toString { url | host = "api.codenamesgreen.com", path = "", query = Nothing, fragment = Nothing }
+
         _ ->
             Url.toString { url | host = "api." ++ url.host, path = "", query = Nothing, fragment = Nothing }
 
