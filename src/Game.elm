@@ -5,7 +5,7 @@ import Browser.Dom as Dom
 import Cell exposing (Cell)
 import Color exposing (Color)
 import Dict
-import Html exposing (Html, div, h3, span, text)
+import Html exposing (Html, div, h3, i, span, text)
 import Html.Attributes as Attr
 import Html.Events exposing (onClick)
 import Html.Keyed as Keyed
@@ -394,15 +394,19 @@ viewStatus model =
                 , span [ Attr.class "green-icon" ] []
                 , text " | "
                 , text (String.fromInt tokensConsumed)
-                , span [ Attr.class "time-icon" ] []
-                , text " 🕑"
+                , text " "
+                , i [ Attr.class "icon ion-ios-time" ] []
                 ]
 
 
 viewBoard : Model -> Html Msg
 viewBoard model =
     Keyed.node "div"
-        [ Attr.id "board" ]
+        [ Attr.id "board"
+        , Attr.classList
+            [ ( "no-team", model.player.side == Nothing )
+            ]
+        ]
         (model.cells
             |> Array.toList
             |> List.map (\c -> ( c.word, lazy3 Cell.view model.player.side WordPicked c ))

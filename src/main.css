@@ -84,7 +84,7 @@ input#game-id {
 #status {
   font-size: 1.2em;
   font-family: "Exo 2", sans-serif;
-  height: 2em;
+  padding-bottom: 1em;
   margin: 1em;
   border-bottom: 1px #EEE solid;
 }
@@ -139,21 +139,20 @@ input#game-id {
 
 #board .time-token-a, #board .time-token-b {
   position: absolute;
-  bottom: 1em;
-  background: #D2B48C;
-  width: 2vw;
-  font-size: 1vw;
-  height: 2vw;
-  border-radius: 1vw;
+  bottom: 0.25em;
+  color: #D2B48C;
+  font-size: 2vw;
   display: flex;
   align-items: center;
   font-weight: bold;
   justify-content: center;
 }
 
-#board .time-token-a { left: 1vw; }
-#board .time-token-b { left: 4vw; }
-
+#board .time-token-a { left: 0.5vw; }
+#board .time-token-b { left: 2.5vw; }
+#board.no-team .time-token-a, #board.no-team .time-token-b {
+  display: none;
+}
 
 
 #sidebar {

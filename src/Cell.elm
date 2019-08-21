@@ -1,7 +1,7 @@
 module Cell exposing (Cell, Display(..), display, isExposed, sideColor, tapped, view)
 
 import Color
-import Html exposing (Html, div, text)
+import Html exposing (Html, div, i, text)
 import Html.Attributes as Attr
 import Html.Events exposing (onClick)
 import Side
@@ -94,11 +94,25 @@ view viewerSide msg cell =
                     ]
                 )
                 (condList
-                    [ ( div [ Attr.class "time-token-a" ] [ text "A" ], guessedB )
-                    , ( div [ Attr.class "time-token-b" ] [ text "B" ], guessedA )
+                    [ ( i [ Attr.class "icon time-token-a", Attr.class (timeTokenIcon viewerSide Side.B) ] [], guessedA )
+                    , ( i [ Attr.class "icon time-token-b", Attr.class (timeTokenIcon viewerSide Side.A) ] [], guessedB )
                     , ( div [ Attr.class "word" ] [ text cell.word ], True )
                     ]
                 )
+
+
+timeTokenIcon : Maybe Side.Side -> Side.Side -> String
+timeTokenIcon viewerSide side =
+    case viewerSide of
+        Nothing ->
+            "ion-ios-close-circle"
+
+        Just s ->
+            if s == side then
+                "ion-ios-arrow-dropdown-circle"
+
+            else
+                "ion-ios-arrow-dropup-circle"
 
 
 condList : List ( a, Bool ) -> List a
