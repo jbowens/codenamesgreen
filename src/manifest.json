@@ -1,7 +1,13 @@
 {
   "short_name": "Codenames",
   "name": "Codenames Green",
-  "icons": [],
+  "icons": [
+	{
+	  "src": "/images/icon-192.png",
+	  "type": "image/png",
+	  "sizes": "192x192"
+	}
+  ],
   "start_url": "/",
   "background_color": "#FFFFFF",
   "display": "standalone",
