@@ -34,6 +34,8 @@ init id data playerId apiUrl =
                         |> List.indexedMap (\i ( w, ( e1, l1 ), ( e2, l2 ) ) -> Cell i w ( e1, l1 ) ( e2, l2 ))
                         |> Array.fromList
                 , player = { id = playerId, side = Nothing }
+                , turn = Nothing
+                , tokensConsumed = 0
                 , apiUrl = apiUrl
                 }
                 data.events
@@ -58,6 +60,8 @@ type alias Model =
     , events : List Event
     , cells : Array Cell
     , player : Player
+    , turn : Maybe Side
+    , tokensConsumed : Int
     , apiUrl : String
     }
 
@@ -93,12 +97,40 @@ type alias Player =
     }
 
 
+type Status
+    = Start
+    | InProgress Side Int Int
+    | Lost Int
+    | Won Int
+
+
 lastEvent : Model -> Int
 lastEvent m =
     m.events
         |> List.head
         |> Maybe.map (\x -> x.number)
         |> Maybe.withDefault 0
+
+
+status : Model -> Status
+status g =
+    let
+        greens =
+            remainingGreen g.cells
+    in
+    case g.turn of
+        Nothing ->
+            Start
+
+        Just turn ->
+            if exposedBlack (Array.toList g.cells) then
+                Lost greens
+
+            else if greens == 0 then
+                Won g.tokensConsumed
+
+            else
+                InProgress turn greens g.tokensConsumed
 
 
 remainingGreen : Array Cell -> Int
@@ -206,16 +238,33 @@ applyEvent e model =
             "guess" ->
                 case ( Array.get e.index model.cells, e.side ) of
                     ( Just cell, Just side ) ->
-                        { model
-                            | cells = Array.set e.index (Cell.tapped side cell) model.cells
-                            , events = e :: model.events
-                        }
+                        applyGuess e cell side model
 
                     _ ->
                         { model | events = e :: model.events }
 
             _ ->
                 { model | events = e :: model.events }
+
+
+applyGuess : Event -> Cell -> Side -> Model -> Model
+applyGuess e cell side model =
+    { model
+        | cells = Array.set e.index (Cell.tapped side cell) model.cells
+        , turn =
+            if Cell.sideColor (Side.opposite side) cell == Color.Tan then
+                Just (Side.opposite side)
+
+            else
+                Just side
+        , tokensConsumed =
+            if model.turn == Just (Side.opposite side) || Cell.sideColor (Side.opposite side) cell == Color.Tan then
+                model.tokensConsumed + 1
+
+            else
+                model.tokensConsumed
+        , events = e :: model.events
+    }
 
 
 
@@ -323,23 +372,31 @@ jumpToBottom id =
 
 
 viewStatus : Model -> Html a
-viewStatus g =
-    let
-        greens =
-            remainingGreen g.cells
-    in
-    if exposedBlack (Array.toList g.cells) then
-        -- handle time tokens
-        div [ Attr.id "status", Attr.class "lost" ]
-            [ text "You lost :(" ]
+viewStatus model =
+    case status model of
+        Start ->
+            div [ Attr.id "status", Attr.class "in-progress" ]
+                [ text "Either side may give the first clue!" ]
 
-    else if greens == 0 then
-        div [ Attr.id "status", Attr.class "won" ]
-            [ text "You won!" ]
+        Lost _ ->
+            div [ Attr.id "status", Attr.class "lost" ]
+                [ text "You lost :(" ]
 
-    else
-        div [ Attr.id "status", Attr.class "in-progress" ]
-            [ text (String.fromInt greens), text " agents remaining" ]
+        Won _ ->
+            div [ Attr.id "status", Attr.class "won" ]
+                [ text "You won!" ]
+
+        InProgress turn greens tokensConsumed ->
+            div [ Attr.id "status", Attr.class "in-progress" ]
+                [ text (Side.toString turn)
+                , text "'s guess | "
+                , text (String.fromInt greens)
+                , span [ Attr.class "green-icon" ] []
+                , text " | "
+                , text (String.fromInt tokensConsumed)
+                , span [ Attr.class "time-icon" ] []
+                , text " 🕑"
+                ]
 
 
 viewBoard : Model -> Html Msg

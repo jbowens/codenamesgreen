@@ -87,17 +87,22 @@ view viewerSide msg cell =
                         |> Maybe.withDefault False
             in
             div
-                (attrList
+                (condList
                     [ ( Attr.class "cell", True )
                     , ( Attr.class "pickable", pickable )
                     , ( onClick (msg cell), pickable )
                     ]
                 )
-                [ text cell.word ]
+                (condList
+                    [ ( div [ Attr.class "time-token-a" ] [ text "A" ], guessedB )
+                    , ( div [ Attr.class "time-token-b" ] [ text "B" ], guessedA )
+                    , ( div [ Attr.class "word" ] [ text cell.word ], True )
+                    ]
+                )
 
 
-attrList : List ( Html.Attribute a, Bool ) -> List (Html.Attribute a)
-attrList list =
+condList : List ( a, Bool ) -> List a
+condList list =
     list
         |> List.filter Tuple.second
         |> List.map Tuple.first

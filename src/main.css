@@ -82,9 +82,21 @@ input#game-id {
 }
 
 #status {
-  font-size: 1.5em;
-  padding: 1em;
+  font-size: 1.2em;
   font-family: "Exo 2", sans-serif;
+  height: 2em;
+  margin: 1em;
+  border-bottom: 1px #EEE solid;
+}
+
+.green-icon {
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  background: #82b34a;
+  vertical-align: middle;
+  border-radius: 0.1em;
+  margin: 0 .3em;
 }
 
 #board {
@@ -99,11 +111,15 @@ input#game-id {
 #board .cell {
   background: #EEE;
   text-align: center;
-  padding: 3em 0;
   cursor: default;
   display: flex;
   justify-content: center;
   align-items: center;
+  position: relative;
+}
+
+#board .cell .word {
+  align-self: center;
 }
 
 #board .pickable:hover {
@@ -120,6 +136,25 @@ input#game-id {
   background: black;
   color: #FFF;
 }
+
+#board .time-token-a, #board .time-token-b {
+  position: absolute;
+  bottom: 1em;
+  background: #D2B48C;
+  width: 2vw;
+  font-size: 1vw;
+  height: 2vw;
+  border-radius: 1vw;
+  display: flex;
+  align-items: center;
+  font-weight: bold;
+  justify-content: center;
+}
+
+#board .time-token-a { left: 1vw; }
+#board .time-token-b { left: 4vw; }
+
+
 
 #sidebar {
   width: 20%;
