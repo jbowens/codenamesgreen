@@ -1,0 +1,9 @@
+{
+  "short_name": "Codenames",
+  "name": "Codenames Green",
+  "icons": [],
+  "start_url": "/",
+  "background_color": "#FFFFFF",
+  "display": "standalone",
+  "theme_color": "#82b34a"
+}
