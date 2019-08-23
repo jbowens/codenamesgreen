@@ -9,12 +9,14 @@ import Html.Attributes as Attr
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Html.Lazy exposing (lazy, lazy2)
 import Http
+import Json.Decode
 import Loading exposing (LoaderType(..), defaultConfig)
 import Side
 import Url
 import Url.Builder as UrlBuilder
 import Url.Parser as Parser exposing ((</>), Parser, map, oneOf, string, top)
 import Url.Parser.Query as Query
+import User
 
 
 
@@ -36,9 +38,14 @@ type Page
     | GameInProgress Game.Model
 
 
-init : String -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
-init playerId url key =
-    stepUrl url { key = key, playerId = playerId, page = Home "", apiUrl = apiUrl url }
+init : Json.Decode.Value -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init encodedUser url key =
+    case User.decode encodedUser of
+        Err e ->
+            ( { key = key, playerId = "", page = NotFound, apiUrl = apiUrl url }, Cmd.none )
+
+        Ok user ->
+            stepUrl url { key = key, playerId = user.playerId, page = Home "", apiUrl = apiUrl url }
 
 
 apiUrl : Url.Url -> String
@@ -346,7 +353,7 @@ viewHeader =
 ---- PROGRAM ----
 
 
-main : Program String Model Msg
+main : Program Json.Decode.Value Model Msg
 main =
     Browser.application
         { view = view
