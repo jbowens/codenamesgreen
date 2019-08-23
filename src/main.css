@@ -112,13 +112,13 @@ input#game-id {
 }
 
 #board {
-  width: 75%;
+  width: 65%;
   font-size: 0.9em;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   grid-auto-rows: 18vh;
-  grid-gap: 0.1vw;
-  min-height: 80vh;
+  grid-gap: 0.5vw;
+  max-width: 800px;
 }
 
 #board .cell {
@@ -201,10 +201,11 @@ input#game-id {
 }
 
 #key-card {
+  flex: 0 0 20%;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   grid-gap: 0.5em;
-  padding: 0 0;
+  max-width: 16em;
 }
 
 #key-card .cell {
@@ -254,10 +255,24 @@ input#game-id {
   margin: 1em;
 }
 
+@media screen and (max-width: 500px) {
+  body {
+    font-size: 0.8em;
+  }
+}
+
 @media (orientation: portrait) {
   #board {
     width: 100%;
+	grid-auto-rows: 10vh;
   }
+
+  #board .time-token-a, #board .time-token-b {
+    font-size: 2vh;
+  }
+  #board .time-token-a { left: 0.5vh; }
+  #board .time-token-b { left: 2.5vh; }
+
 
   #sidebar {
     flex-direction: row;
