@@ -4,7 +4,7 @@ import Browser
 import Browser.Navigation as Nav
 import Dict
 import Game
-import Html exposing (Html, a, button, div, form, h1, h2, h3, img, input, p, span, text)
+import Html exposing (Html, a, button, div, form, h1, h2, h3, img, input, p, span, strong, text)
 import Html.Attributes as Attr
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Html.Lazy exposing (lazy, lazy2)
@@ -33,6 +33,7 @@ type alias Model =
 
 type Page
     = NotFound
+    | Error String
     | Home String
     | GameLoading String
     | GameInProgress Game.Model
@@ -42,7 +43,7 @@ init : Json.Decode.Value -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init encodedUser url key =
     case User.decode encodedUser of
         Err e ->
-            ( { key = key, playerId = "", page = NotFound, apiUrl = apiUrl url }, Cmd.none )
+            ( { key = key, playerId = "", page = Error (Json.Decode.errorToString e), apiUrl = apiUrl url }, Cmd.none )
 
         Ok user ->
             stepUrl url { key = key, playerId = user.playerId, page = Home "", apiUrl = apiUrl url }
@@ -223,6 +224,9 @@ view model =
         GameInProgress game ->
             viewGameInProgress game
 
+        Error msg ->
+            viewError msg
+
 
 viewNotFound : Browser.Document Msg
 viewNotFound =
@@ -235,6 +239,21 @@ viewNotFound =
                 [ text "That page doesn't exist. "
                 , a [ Attr.href "/" ] [ text "Go to the homepage" ]
                 ]
+            ]
+        ]
+    }
+
+
+viewError : String -> Browser.Document Msg
+viewError msg =
+    { title = "Codenames Green | Page not found"
+    , body =
+        [ viewHeader
+        , div [ Attr.id "error" ]
+            [ h2 [] [ text "Oops" ]
+            , p []
+                [ text "An unexpected error was encountered. Most likely this is the result of corrupted local storage. Try clearing all storage associated with the app." ]
+            , p [] [ strong [] [ text "Error: " ], text msg ]
             ]
         ]
     }
