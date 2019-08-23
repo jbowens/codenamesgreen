@@ -127,6 +127,7 @@ func (h *handler) handleGuess(rw http.ResponseWriter, req *http.Request) {
 	var body struct {
 		GameID    string `json:"game_id"`
 		PlayerID  string `json:"player_id"`
+		Name      string `json:"name"`
 		Team      int    `json:"team"`
 		Index     int    `json:"index"`
 		LastEvent int    `json:"last_event"`
@@ -146,7 +147,7 @@ func (h *handler) handleGuess(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	g.guess(body.PlayerID, body.Team, body.Index, time.Now())
+	g.guess(body.PlayerID, body.Name, body.Team, body.Index, time.Now())
 
 	evts, _ := g.eventsSince(body.LastEvent)
 	writeJSON(rw, GameUpdate{Seed: g.Seed, Events: evts})
@@ -157,6 +158,7 @@ func (h *handler) handleChat(rw http.ResponseWriter, req *http.Request) {
 	var body struct {
 		GameID    string `json:"game_id"`
 		PlayerID  string `json:"player_id"`
+		Name      string `json:"name"`
 		Team      int    `json:"team"`
 		Message   string `json:"message"`
 		LastEvent int    `json:"last_event"`
@@ -176,7 +178,7 @@ func (h *handler) handleChat(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	g.markSeen(body.PlayerID, body.Team, time.Now())
+	g.markSeen(body.PlayerID, body.Name, body.Team, time.Now())
 
 	g.addEvent(Event{
 		Type:     "chat",
@@ -194,6 +196,7 @@ func (h *handler) handleEvents(rw http.ResponseWriter, req *http.Request) {
 	var body struct {
 		GameID    string `json:"game_id"`
 		PlayerID  string `json:"player_id"`
+		Name      string `json:"name"`
 		Team      int    `json:"team"`
 		LastEvent int    `json:"last_event"`
 	}
@@ -212,7 +215,7 @@ func (h *handler) handleEvents(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	g.markSeen(body.PlayerID, body.Team, time.Now())
+	g.markSeen(body.PlayerID, body.Name, body.Team, time.Now())
 
 	evts, ch := g.eventsSince(body.LastEvent)
 	if len(evts) > 0 {

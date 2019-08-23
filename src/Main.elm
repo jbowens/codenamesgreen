@@ -25,7 +25,7 @@ import User
 
 type alias Model =
     { key : Nav.Key
-    , playerId : String
+    , user : User.User
     , page : Page
     , apiUrl : String
     }
@@ -43,10 +43,21 @@ init : Json.Decode.Value -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init encodedUser url key =
     case User.decode encodedUser of
         Err e ->
-            ( { key = key, playerId = "", page = Error (Json.Decode.errorToString e), apiUrl = apiUrl url }, Cmd.none )
+            ( { key = key
+              , user = User.User "" ""
+              , page = Error (Json.Decode.errorToString e)
+              , apiUrl = apiUrl url
+              }
+            , Cmd.none
+            )
 
         Ok user ->
-            stepUrl url { key = key, playerId = user.playerId, page = Home "", apiUrl = apiUrl url }
+            stepUrl url
+                { key = key
+                , user = user
+                , page = Home ""
+                , apiUrl = apiUrl url
+                }
 
 
 apiUrl : Url.Url -> String
@@ -137,14 +148,14 @@ update msg model =
                 GameInProgress old ->
                     let
                         ( gameModel, gameCmd ) =
-                            Game.init old.id data model.playerId model.apiUrl
+                            Game.init old.id data model.user.playerId model.user.name model.apiUrl
                     in
                     ( { model | page = GameInProgress gameModel }, Cmd.map GameUpdate gameCmd )
 
                 GameLoading id ->
                     let
                         ( gameModel, gameCmd ) =
-                            Game.init id data model.playerId model.apiUrl
+                            Game.init id data model.user.playerId model.user.name model.apiUrl
                     in
                     ( { model | page = GameInProgress gameModel }, Cmd.map GameUpdate gameCmd )
 

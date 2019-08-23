@@ -67,6 +67,7 @@ type Event struct {
 	Number   int    `json:"number"`
 	Type     string `json:"type"`
 	PlayerID string `json:"player_id"`
+	Name     string `json:"name"`
 	Team     int    `json:"team"`
 	Index    int    `json:"index"`
 	Message  string `json:"message"`
@@ -74,6 +75,7 @@ type Event struct {
 
 type Player struct {
 	Team     int       `json:"team"`
+	Name     string    `json:"name"`
 	LastSeen time.Time `json:"last_seen"`
 }
 
@@ -124,7 +126,7 @@ func (gs *GameState) eventsSince(lastSeen int) (evts []Event, next chan struct{}
 	return evts, gs.changed
 }
 
-func (g *Game) markSeen(playerID string, team int, when time.Time) {
+func (g *Game) markSeen(playerID, name string, team int, when time.Time) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 
@@ -136,6 +138,16 @@ func (g *Game) markSeen(playerID string, team int, when time.Time) {
 			g.addEventLocked(Event{
 				Type:     "join_side",
 				PlayerID: playerID,
+				Name:     name,
+				Team:     team,
+			})
+		}
+		if name != p.Name {
+			p.Name = name
+			g.addEventLocked(Event{
+				Type:     "change_name",
+				PlayerID: playerID,
+				Name:     name,
 				Team:     team,
 			})
 		}
@@ -143,18 +155,19 @@ func (g *Game) markSeen(playerID string, team int, when time.Time) {
 		return
 	}
 
-	g.players[playerID] = Player{Team: team, LastSeen: when}
+	g.players[playerID] = Player{Team: team, Name: name, LastSeen: when}
 	if team != 0 {
 		g.addEventLocked(Event{
 			Type:     "join_side",
 			PlayerID: playerID,
+			Name:     name,
 			Team:     team,
 		})
 	}
 }
 
-func (g *Game) guess(playerID string, team, index int, when time.Time) {
-	g.markSeen(playerID, team, when)
+func (g *Game) guess(playerID, name string, team, index int, when time.Time) {
+	g.markSeen(playerID, name, team, when)
 
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -173,6 +186,7 @@ func (g *Game) guess(playerID string, team, index int, when time.Time) {
 		Team:     team,
 		Index:    index,
 		PlayerID: playerID,
+		Name:     name,
 	})
 }
 
@@ -187,6 +201,7 @@ func (g *Game) pruneOldPlayers(now time.Time) (remaining int) {
 				g.addEventLocked(Event{
 					Type:     "player_left",
 					PlayerID: id,
+					Name:     player.Name,
 					Team:     player.Team,
 				})
 			}

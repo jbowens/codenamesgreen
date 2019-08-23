@@ -17,8 +17,8 @@ import Side exposing (Side)
 import Task
 
 
-init : String -> GameData -> String -> String -> ( Model, Cmd Msg )
-init id data playerId apiUrl =
+init : String -> GameData -> String -> String -> String -> ( Model, Cmd Msg )
+init id data playerId playerName apiUrl =
     let
         model =
             List.foldl applyEvent
@@ -33,7 +33,7 @@ init id data playerId apiUrl =
                         data.twoLayout
                         |> List.indexedMap (\i ( w, ( e1, l1 ), ( e2, l2 ) ) -> Cell i w ( e1, l1 ) ( e2, l2 ))
                         |> Array.fromList
-                , player = { id = playerId, side = Nothing }
+                , player = { id = playerId, name = playerName, side = Nothing }
                 , turn = Nothing
                 , tokensConsumed = 0
                 , apiUrl = apiUrl
@@ -41,7 +41,7 @@ init id data playerId apiUrl =
                 data.events
 
         player =
-            { id = playerId, side = Dict.get playerId model.players }
+            { id = playerId, name = playerName, side = Dict.get playerId model.players }
 
         modelWithPlayer =
             { model | player = player }
@@ -85,6 +85,7 @@ type alias Event =
     { number : Int
     , typ : String
     , playerId : String
+    , name : String
     , side : Maybe Side
     , index : Int
     , message : String
@@ -93,6 +94,7 @@ type alias Event =
 
 type alias Player =
     { id : String
+    , name : String
     , side : Maybe Side
     }
 
@@ -303,6 +305,7 @@ submitGuess apiUrl gameId player cell lastEventId =
                     [ ( "game_id", Enc.string gameId )
                     , ( "index", Enc.int cell.index )
                     , ( "player_id", Enc.string player.id )
+                    , ( "name", Enc.string player.name )
                     , ( "team", Side.encodeMaybe player.side )
                     , ( "last_event", Enc.int lastEventId )
                     ]
@@ -322,6 +325,7 @@ longPollEvents model =
                 (Enc.object
                     [ ( "game_id", Enc.string model.id )
                     , ( "player_id", Enc.string model.player.id )
+                    , ( "name", Enc.string model.player.name )
                     , ( "team", Side.encodeMaybe model.player.side )
                     , ( "last_event", Enc.int (lastEvent model) )
                     ]
@@ -351,10 +355,11 @@ decodeUpdate =
 
 decodeEvent : Dec.Decoder Event
 decodeEvent =
-    Dec.map6 Event
+    Dec.map7 Event
         (Dec.field "number" Dec.int)
         (Dec.field "type" Dec.string)
         (Dec.field "player_id" Dec.string)
+        (Dec.field "name" Dec.string)
         (Dec.field "team" Side.decodeMaybe)
         (Dec.field "index" Dec.int)
         (Dec.field "message" Dec.string)
@@ -427,14 +432,15 @@ viewEvent model e =
     case e.typ of
         "join_side" ->
             [ div []
-                [ text "A new player has joined side "
+                [ text e.name
+                , text " has joined side "
                 , text (e.side |> Maybe.map Side.toString |> Maybe.withDefault "")
                 , text "."
                 ]
             ]
 
         "player_left" ->
-            [ div [] [ text "A player has left the game." ] ]
+            [ div [] [ text e.name, text " has left the game." ] ]
 
         "guess" ->
             Array.get e.index model.cells
@@ -443,6 +449,9 @@ viewEvent model e =
                         [ div []
                             [ text "Side "
                             , text (Side.toString s)
+                            , text " ("
+                            , text e.name
+                            , text ") "
                             , text " tapped "
                             , span [ Attr.class "chat-color", Attr.class (Color.toString (Cell.sideColor (Side.opposite s) c)) ] [ text c.word ]
                             , text "."
@@ -453,7 +462,7 @@ viewEvent model e =
                 |> Maybe.withDefault []
 
         "chat" ->
-            [ div [] [ text e.message ] ]
+            [ div [] [ text e.name, text ": ", text e.message ] ]
 
         _ ->
             []
