@@ -93,10 +93,10 @@ input#game-id {
 }
 
 #status {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   font-size: 1.2em;
   font-family: "Exo 2", sans-serif;
-  padding-bottom: 0.5em;
+  padding: 0 1em 1em 0;
   margin-bottom: 0.5em;
   border-bottom: 1px #EEE solid;
 }
@@ -119,18 +119,6 @@ input#game-id {
   grid-auto-rows: 18vh;
   grid-gap: 0.1vw;
   min-height: 80vh;
-}
-
-@media screen and (max-width: 800px) {
-  body {
-	font-size: 0.9em;
-  }
-}
-
-@media screen and (max-width: 700px) {
-  body {
-	font-size: 0.7em;
-  }
 }
 
 #board .cell {
@@ -217,8 +205,6 @@ input#game-id {
   grid-template-columns: repeat(5, 1fr);
   grid-gap: 0.5em;
   padding: 0 0;
-  min-width: 12em;
-  min-height: 12em;
 }
 
 #key-card .cell {
