@@ -188,10 +188,6 @@ input#game-id {
   flex-wrap: wrap;
 }
 
-#join-a-team {
-  margin: 1em;
-}
-
 #join-a-team .buttons {
   display: flex;
   width: 100%;
