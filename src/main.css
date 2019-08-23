@@ -89,14 +89,15 @@ input#game-id {
   display: flex;
   flex-direction: row;
   flex: 1;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 #status {
+  flex: 1 1 auto;
   font-size: 1.2em;
   font-family: "Exo 2", sans-serif;
-  padding-bottom: 1em;
-  margin: 1em;
+  padding-bottom: 0.5em;
+  margin-bottom: 0.5em;
   border-bottom: 1px #EEE solid;
 }
 
@@ -111,12 +112,25 @@ input#game-id {
 }
 
 #board {
-  width: 80%;
+  width: 75%;
+  font-size: 0.9em;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   grid-auto-rows: 18vh;
   grid-gap: 0.1vw;
   min-height: 80vh;
+}
+
+@media screen and (max-width: 800px) {
+  body {
+	font-size: 0.9em;
+  }
+}
+
+@media screen and (max-width: 700px) {
+  body {
+	font-size: 0.7em;
+  }
 }
 
 #board .cell {
@@ -167,11 +181,15 @@ input#game-id {
 
 
 #sidebar {
-  width: 20%;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 1em;
+  flex-wrap: wrap;
 }
 
 #join-a-team {
-  margin: 0.25em;
+  margin: 1em;
 }
 
 #join-a-team .buttons {
@@ -202,8 +220,9 @@ input#game-id {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   grid-gap: 0.5em;
-  padding: 0 1em;
-  margin: 0 auto;
+  padding: 0 0;
+  min-width: 12em;
+  min-height: 12em;
 }
 
 #key-card .cell {
@@ -223,7 +242,8 @@ input#game-id {
 
 #event-log {
   font-size: 0.9em;
-  margin: 1em;
+  margin: 1em 0;
+  flex: 1 1 auto;
 }
 
 #event-log #events {
@@ -250,4 +270,18 @@ input#game-id {
 }
 #next-game {
   margin: 1em;
+}
+
+@media (orientation: portrait) {
+  #board {
+    width: 100%;
+  }
+
+  #sidebar {
+    flex-direction: row;
+  }
+
+  #key-card {
+	flex: 2 1 40vw
+  }
 }

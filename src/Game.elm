@@ -388,9 +388,7 @@ viewStatus model =
 
         InProgress turn greens tokensConsumed ->
             div [ Attr.id "status", Attr.class "in-progress" ]
-                [ text (Side.toString turn)
-                , text "'s guess | "
-                , text (String.fromInt greens)
+                [ text (String.fromInt greens)
                 , span [ Attr.class "green-icon" ] []
                 , text " | "
                 , text (String.fromInt tokensConsumed)
