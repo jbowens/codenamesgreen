@@ -10,7 +10,7 @@ import Html exposing (Html, div, h3, i, li, span, text, ul)
 import Html.Attributes as Attr
 import Html.Events exposing (onClick)
 import Html.Keyed as Keyed
-import Html.Lazy exposing (lazy3)
+import Html.Lazy exposing (lazy2, lazy3)
 import Http
 import Json.Decode as Dec
 import Json.Encode as Enc
@@ -302,24 +302,20 @@ viewStatus model =
     case status model of
         Start ->
             div [ Attr.id "status", Attr.class "in-progress" ]
-                [ text "Either side may give the first clue!" ]
+                [ div [] [ text "Either side may give the first clue!" ] ]
 
         Lost _ ->
             div [ Attr.id "status", Attr.class "lost" ]
-                [ text "You lost :(" ]
+                [ div [] [ text "You lost :(" ] ]
 
         Won _ ->
             div [ Attr.id "status", Attr.class "won" ]
-                [ text "You won!" ]
+                [ div [] [ text "You won!" ] ]
 
         InProgress turn greens tokensConsumed ->
             div [ Attr.id "status", Attr.class "in-progress" ]
-                [ text (String.fromInt greens)
-                , span [ Attr.class "green-icon" ] []
-                , text " | "
-                , text (String.fromInt tokensConsumed)
-                , text " "
-                , i [ Attr.class "icon ion-ios-time" ] []
+                [ div [] [ text (String.fromInt greens), span [ Attr.class "green-icon" ] [] ]
+                , div [] [ text (String.fromInt tokensConsumed), text " ", i [ Attr.class "icon ion-ios-time" ] [] ]
                 ]
 
 
@@ -339,43 +335,42 @@ viewBoard model =
 
 viewEvents : Model -> Html Msg
 viewEvents model =
-    div [ Attr.id "events" ]
+    Keyed.node "div"
+        [ Attr.id "events" ]
         (model.events
             |> List.reverse
-            |> List.concatMap (viewEvent model)
+            |> List.map (\e -> ( String.fromInt e.number, lazy2 viewEvent model e ))
         )
 
 
-viewEvent : Model -> Event -> List (Html Msg)
+viewEvent : Model -> Event -> Html Msg
 viewEvent model e =
     case e.typ of
         "join_side" ->
-            [ div []
+            div []
                 [ text e.name
                 , text " has joined side "
                 , text (e.side |> Maybe.map Side.toString |> Maybe.withDefault "")
                 , text "."
                 ]
-            ]
 
         "player_left" ->
-            [ div [] [ text e.name, text " has left the game." ] ]
+            div [] [ text e.name, text " has left the game." ]
 
         "guess" ->
             Array.get e.index model.cells
                 |> Maybe.map2
                     (\s c ->
-                        [ div []
+                        div []
                             [ text "Side "
                             , text (Side.toString s)
                             , text " tapped "
                             , span [ Attr.class "chat-color", Attr.class (Color.toString (Cell.oppColor s c)) ] [ text c.word ]
                             , text "."
                             ]
-                        ]
                     )
                     e.side
-                |> Maybe.withDefault []
+                |> Maybe.withDefault (text "")
 
         "chat" ->
             let
@@ -387,10 +382,10 @@ viewEvent model e =
                         Nothing ->
                             text ""
             in
-            [ div [] [ text e.name, sideEl, text ": ", text e.message ] ]
+            div [] [ text e.name, sideEl, text ": ", text e.message ]
 
         _ ->
-            []
+            text ""
 
 
 viewKeycard : Model -> Side -> Html Msg

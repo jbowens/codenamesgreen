@@ -8,7 +8,7 @@ import Game
 import Html exposing (Html, a, button, div, form, h1, h2, h3, input, p, span, strong, text)
 import Html.Attributes as Attr
 import Html.Events exposing (onClick, onInput, onSubmit)
-import Html.Lazy exposing (lazy, lazy2)
+import Html.Lazy exposing (lazy, lazy2, lazy3)
 import Http
 import Json.Decode
 import Loading exposing (LoaderType(..), defaultConfig)
@@ -345,25 +345,35 @@ viewActiveSidebar : Game.Model -> Side.Side -> String -> List (Html Msg)
 viewActiveSidebar g side chatMessage =
     [ lazy Game.viewStatus g
     , Html.map GameUpdate (lazy2 Game.viewKeycard g side)
-    , lazy2 viewEventBox g chatMessage
-    , viewNextGameButton
+    , lazy3 viewEventBox g side chatMessage
+    , viewButtonRow
     ]
 
 
-viewEventBox : Game.Model -> String -> Html Msg
-viewEventBox g chatMessage =
+viewEventBox : Game.Model -> Side.Side -> String -> Html Msg
+viewEventBox g side chatMessage =
     div [ Attr.id "event-log" ]
         [ Html.map GameUpdate (Game.viewEvents g)
         , form [ Attr.id "chat-form", onSubmit SendChat ]
             [ input [ Attr.value chatMessage, onInput ChatMessageChanged ] []
             , button [] [ text "Send" ]
             ]
+        , div [ Attr.id "name-change" ]
+            [ text "Your name is "
+            , span [ Attr.class "name" ] [ text g.player.name ]
+            , text "."
+            ]
+        , div [ Attr.id "side-change" ]
+            [ text "You are on "
+            , span [ Attr.class "side" ] [ text "Side ", text <| Side.toString <| side ]
+            , text "."
+            ]
         ]
 
 
-viewNextGameButton : Html Msg
-viewNextGameButton =
-    div [ Attr.id "next-game" ]
+viewButtonRow : Html Msg
+viewButtonRow =
+    div [ Attr.id "button-row" ]
         [ button [ onClick NextGame ] [ text "Next game" ] ]
 
 
