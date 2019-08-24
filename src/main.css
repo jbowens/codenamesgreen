@@ -338,6 +338,16 @@ input#game-id {
     flex: 0 1 20vh;
   }
 }
+
+@media (orientation: landscape) and (max-width: 800px) {
+  #board {
+    width: 50%;
+  }
+  #sidebar {
+    max-width: 45%;
+  }
+}
+
 @media (orientation: portrait) {
   #board {
     width: 100%;
