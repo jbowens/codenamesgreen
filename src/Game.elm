@@ -410,6 +410,12 @@ viewKeycard model side =
                     )
                 , ul [ Attr.class "tans" ]
                     (cellsOf Color.Tan
+                        |> List.take 7
+                        |> List.map (\x -> li [ Attr.classList [ ( "crossed", Cell.isExposed side x ) ] ] [ text x.word ])
+                    )
+                , ul [ Attr.class "tans" ]
+                    (cellsOf Color.Tan
+                        |> List.drop 7
                         |> List.map (\x -> li [ Attr.classList [ ( "crossed", Cell.isExposed side x ) ] ] [ text x.word ])
                     )
                 ]
