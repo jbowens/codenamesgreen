@@ -173,7 +173,14 @@ update msg model =
                 Just side ->
                     ( model
                     , if not (Cell.isExposed (Side.opposite side) cell) then
-                        Api.submitGuess model.id model.player cell.index (lastEvent model) GameUpdate model.client
+                        Api.submitGuess
+                            { gameId = model.id
+                            , player = model.player
+                            , index = cell.index
+                            , lastEventId = lastEvent model
+                            , toMsg = GameUpdate
+                            , client = model.client
+                            }
 
                       else
                         Cmd.none
@@ -256,7 +263,14 @@ applyGuess e cell side model =
 
 longPollEvents : Model -> Cmd Msg
 longPollEvents m =
-    Api.longPollEvents m.id m.player (lastEvent m) (LongPoll m.id m.seed) (m.id ++ m.seed) m.client
+    Api.longPollEvents
+        { gameId = m.id
+        , player = m.player
+        , lastEventId = lastEvent m
+        , toMsg = LongPoll m.id m.seed
+        , tracker = "longpoll"
+        , client = m.client
+        }
 
 
 

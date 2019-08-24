@@ -188,7 +188,14 @@ stepUrl url model =
 
 stepGameView : Model -> String -> Maybe String -> ( Model, Cmd Msg )
 stepGameView model id prevSeed =
-    ( { model | page = GameLoading id }, Api.maybeMakeGame id prevSeed GotGame model.apiClient )
+    ( { model | page = GameLoading id }
+    , Api.maybeMakeGame
+        { gameId = id
+        , prevSeed = prevSeed
+        , toMsg = GotGame
+        , client = model.apiClient
+        }
+    )
 
 
 type Route

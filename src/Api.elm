@@ -64,57 +64,79 @@ endpointUrl baseUrl path =
         |> Url.toString
 
 
-submitGuess : String -> Player -> Int -> Int -> (Result Http.Error Update -> msg) -> Client -> Cmd msg
-submitGuess gameId player cellIndex lastEventId toMsg client =
+submitGuess :
+    { gameId : String
+    , player : Player
+    , index : Int
+    , lastEventId : Int
+    , toMsg : Result Http.Error Update -> msg
+    , client : Client
+    }
+    -> Cmd msg
+submitGuess r =
     Http.post
-        { url = endpointUrl client.baseUrl "/guess"
+        { url = endpointUrl r.client.baseUrl "/guess"
         , body =
             Http.jsonBody
                 (E.object
-                    [ ( "game_id", E.string gameId )
-                    , ( "index", E.int cellIndex )
-                    , ( "player_id", E.string player.id )
-                    , ( "name", E.string player.name )
-                    , ( "team", Side.encodeMaybe player.side )
-                    , ( "last_event", E.int lastEventId )
+                    [ ( "game_id", E.string r.gameId )
+                    , ( "index", E.int r.index )
+                    , ( "player_id", E.string r.player.id )
+                    , ( "name", E.string r.player.name )
+                    , ( "team", Side.encodeMaybe r.player.side )
+                    , ( "last_event", E.int r.lastEventId )
                     ]
                 )
-        , expect = Http.expectJson toMsg decodeUpdate
+        , expect = Http.expectJson r.toMsg decodeUpdate
         }
 
 
-longPollEvents : String -> Player -> Int -> (Result Http.Error Update -> msg) -> String -> Client -> Cmd msg
-longPollEvents gameId player lastEventId toMsg tracker client =
+longPollEvents :
+    { gameId : String
+    , player : Player
+    , lastEventId : Int
+    , toMsg : Result Http.Error Update -> msg
+    , tracker : String
+    , client : Client
+    }
+    -> Cmd msg
+longPollEvents r =
     Http.request
         { method = "POST"
         , headers = []
-        , url = endpointUrl client.baseUrl "/events"
+        , url = endpointUrl r.client.baseUrl "/events"
         , body =
             Http.jsonBody
                 (E.object
-                    [ ( "game_id", E.string gameId )
-                    , ( "player_id", E.string player.id )
-                    , ( "name", E.string player.name )
-                    , ( "team", Side.encodeMaybe player.side )
-                    , ( "last_event", E.int lastEventId )
+                    [ ( "game_id", E.string r.gameId )
+                    , ( "player_id", E.string r.player.id )
+                    , ( "name", E.string r.player.name )
+                    , ( "team", Side.encodeMaybe r.player.side )
+                    , ( "last_event", E.int r.lastEventId )
                     ]
                 )
-        , expect = Http.expectJson toMsg decodeUpdate
+        , expect = Http.expectJson r.toMsg decodeUpdate
         , timeout = Just 45000
-        , tracker = Just tracker
+        , tracker = Just r.tracker
         }
 
 
-maybeMakeGame : String -> Maybe String -> (Result Http.Error GameState -> msg) -> Client -> Cmd msg
-maybeMakeGame id prevSeed toMsg client =
+maybeMakeGame :
+    { gameId : String
+    , prevSeed : Maybe String
+    , toMsg : Result Http.Error GameState -> msg
+    , client : Client
+    }
+    -> Cmd msg
+maybeMakeGame r =
     Http.post
-        { url = endpointUrl client.baseUrl "/new-game"
+        { url = endpointUrl r.client.baseUrl "/new-game"
         , body =
             Http.jsonBody
                 (E.object
-                    [ ( "game_id", E.string id )
+                    [ ( "game_id", E.string r.gameId )
                     , ( "prev_seed"
-                      , case prevSeed of
+                      , case r.prevSeed of
                             Nothing ->
                                 E.null
 
@@ -123,7 +145,7 @@ maybeMakeGame id prevSeed toMsg client =
                       )
                     ]
                 )
-        , expect = Http.expectJson toMsg decodeGameState
+        , expect = Http.expectJson r.toMsg decodeGameState
         }
 
 
