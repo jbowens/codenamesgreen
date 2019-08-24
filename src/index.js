@@ -4,9 +4,11 @@ import { Elm } from './Main.elm';
 // Metadata about the user is persisted in local storage.
 // If there is no user in local storage, we generate one
 // with a random player ID and random guest name.
-var user = localStorage.getItem('user');
+var encodedUser = localStorage.getItem('user');
 
-if (user == null || !user.player_id || !user.name) {
+var parsedUser = encodedUser ? JSON.parse(encodedUser) : null;
+
+if (parsedUser == null || !parsedUser.player_id || !parsedUser.name) {
     // generate a new user with a random identifier and save it.
 
     var entropy = new Uint32Array(4); // 128 bits
@@ -15,14 +17,14 @@ if (user == null || !user.player_id || !user.name) {
 
     var guestNumber = Math.floor(Math.random() * 4095);
 
-    user = JSON.stringify({
+    encodedUser = JSON.stringify({
       player_id: playerID,
       name: 'Guest '+ guestNumber.toString(16).toUpperCase(),
     });
-    localStorage.setItem('user', user);
+    localStorage.setItem('user', encodedUser);
 }
 
 Elm.Main.init({
   node: document.getElementById('root'),
-  flags: user,
+  flags: encodedUser,
 });
