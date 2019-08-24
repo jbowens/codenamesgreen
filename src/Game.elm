@@ -1,5 +1,6 @@
-module Game exposing (GameData, Model, Msg(..), Player, init, maybeMakeGame, update, viewBoard, viewEventLog, viewKeycard, viewStatus)
+module Game exposing (Model, Msg(..), init, update, updatePlayer, viewBoard, viewEventLog, viewKeycard, viewStatus)
 
+import Api exposing (Event, Update)
 import Array exposing (Array)
 import Browser.Dom as Dom
 import Cell exposing (Cell)
@@ -13,12 +14,13 @@ import Html.Lazy exposing (lazy3)
 import Http
 import Json.Decode as Dec
 import Json.Encode as Enc
+import Player exposing (Player)
 import Side exposing (Side)
 import Task
 
 
-init : String -> GameData -> String -> String -> String -> ( Model, Cmd Msg )
-init id data playerId playerName apiUrl =
+init : String -> Api.GameState -> String -> String -> Api.Client -> ( Model, Cmd Msg )
+init id data playerId playerName client =
     let
         model =
             List.foldl applyEvent
@@ -36,7 +38,7 @@ init id data playerId playerName apiUrl =
                 , player = { id = playerId, name = playerName, side = Nothing }
                 , turn = Nothing
                 , tokensConsumed = 0
-                , apiUrl = apiUrl
+                , client = client
                 }
                 data.events
 
@@ -57,45 +59,12 @@ type alias Model =
     { id : String
     , seed : String
     , players : Dict.Dict String Side
-    , events : List Event
+    , events : List Api.Event
     , cells : Array Cell
     , player : Player
     , turn : Maybe Side
     , tokensConsumed : Int
-    , apiUrl : String
-    }
-
-
-type alias GameData =
-    { seed : String
-    , words : List String
-    , events : List Event
-    , oneLayout : List Color
-    , twoLayout : List Color
-    }
-
-
-type alias Update =
-    { seed : String
-    , events : List Event
-    }
-
-
-type alias Event =
-    { number : Int
-    , typ : String
-    , playerId : String
-    , name : String
-    , side : Maybe Side
-    , index : Int
-    , message : String
-    }
-
-
-type alias Player =
-    { id : String
-    , name : String
-    , side : Maybe Side
+    , client : Api.Client
     }
 
 
@@ -158,8 +127,8 @@ exposedBlack cells =
 
 type Msg
     = NoOp
-    | LongPoll String (Result Http.Error Update)
-    | GameUpdate (Result Http.Error Update)
+    | LongPoll String String (Result Http.Error Api.Update)
+    | GameUpdate (Result Http.Error Api.Update)
     | WordPicked Cell
 
 
@@ -169,20 +138,26 @@ update msg model =
         NoOp ->
             ( model, Cmd.none )
 
-        LongPoll seed result ->
-            case ( seed == model.seed, result ) of
+        LongPoll id seed result ->
+            case ( id == model.id && seed == model.seed, result ) of
                 ( False, _ ) ->
+                    -- We might get the result of a long poll from a previous
+                    -- game we were playing, in which case we just want to
+                    -- ignore it.
                     ( model, Cmd.none )
 
-                ( _, Err e ) ->
-                    ( model, Cmd.none )
+                ( True, Err e ) ->
+                    -- Even if the long poll request failed for some reason,
+                    -- we want to trigger a new request anyways. The failure
+                    -- could be short-lived.
+                    ( model, longPollEvents model )
 
                 ( True, Ok up ) ->
                     let
-                        ( updatedModel, cmd ) =
+                        ( m, cmd ) =
                             applyUpdate model up
                     in
-                    ( updatedModel, Cmd.batch [ cmd, longPollEvents updatedModel ] )
+                    ( m, Cmd.batch [ cmd, longPollEvents m ] )
 
         GameUpdate (Ok up) ->
             applyUpdate model up
@@ -198,11 +173,21 @@ update msg model =
                 Just side ->
                     ( model
                     , if not (Cell.isExposed (Side.opposite side) cell) then
-                        submitGuess model.apiUrl model.id model.player cell (lastEvent model)
+                        Api.submitGuess model.id model.player cell.index (lastEvent model) GameUpdate model.client
 
                       else
                         Cmd.none
                     )
+
+
+updatePlayer : Model -> Player -> ( Model, Cmd Msg )
+updatePlayer m player =
+    ( { m | player = player }
+    , Cmd.batch
+        [ Http.cancel "longpoll"
+        , longPollEvents m
+        ]
+    )
 
 
 applyUpdate : Model -> Update -> ( Model, Cmd Msg )
@@ -269,100 +254,9 @@ applyGuess e cell side model =
     }
 
 
-
------- NETWORK ------
-
-
-maybeMakeGame : String -> String -> Maybe String -> (Result Http.Error GameData -> a) -> Cmd a
-maybeMakeGame apiUrl id prevSeed msg =
-    Http.post
-        { url = apiUrl ++ "/new-game"
-        , body =
-            Http.jsonBody
-                (Enc.object
-                    [ ( "game_id", Enc.string id )
-                    , ( "prev_seed"
-                      , case prevSeed of
-                            Nothing ->
-                                Enc.null
-
-                            Just seed ->
-                                Enc.string seed
-                      )
-                    ]
-                )
-        , expect = Http.expectJson msg decodeGameData
-        }
-
-
-submitGuess : String -> String -> Player -> Cell -> Int -> Cmd Msg
-submitGuess apiUrl gameId player cell lastEventId =
-    Http.post
-        { url = apiUrl ++ "/guess"
-        , body =
-            Http.jsonBody
-                (Enc.object
-                    [ ( "game_id", Enc.string gameId )
-                    , ( "index", Enc.int cell.index )
-                    , ( "player_id", Enc.string player.id )
-                    , ( "name", Enc.string player.name )
-                    , ( "team", Side.encodeMaybe player.side )
-                    , ( "last_event", Enc.int lastEventId )
-                    ]
-                )
-        , expect = Http.expectJson GameUpdate decodeUpdate
-        }
-
-
 longPollEvents : Model -> Cmd Msg
-longPollEvents model =
-    Http.request
-        { method = "POST"
-        , headers = []
-        , url = model.apiUrl ++ "/events"
-        , body =
-            Http.jsonBody
-                (Enc.object
-                    [ ( "game_id", Enc.string model.id )
-                    , ( "player_id", Enc.string model.player.id )
-                    , ( "name", Enc.string model.player.name )
-                    , ( "team", Side.encodeMaybe model.player.side )
-                    , ( "last_event", Enc.int (lastEvent model) )
-                    ]
-                )
-        , expect = Http.expectJson (LongPoll model.seed) decodeUpdate
-        , timeout = Just 45000
-        , tracker = Nothing
-        }
-
-
-decodeGameData : Dec.Decoder GameData
-decodeGameData =
-    Dec.map5 GameData
-        (Dec.field "state" (Dec.field "seed" Dec.string))
-        (Dec.field "words" (Dec.list Dec.string))
-        (Dec.field "state" (Dec.field "events" (Dec.list decodeEvent)))
-        (Dec.field "one_layout" (Dec.list Color.decode))
-        (Dec.field "two_layout" (Dec.list Color.decode))
-
-
-decodeUpdate : Dec.Decoder Update
-decodeUpdate =
-    Dec.map2 Update
-        (Dec.field "seed" Dec.string)
-        (Dec.field "events" (Dec.list decodeEvent))
-
-
-decodeEvent : Dec.Decoder Event
-decodeEvent =
-    Dec.map7 Event
-        (Dec.field "number" Dec.int)
-        (Dec.field "type" Dec.string)
-        (Dec.field "player_id" Dec.string)
-        (Dec.field "name" Dec.string)
-        (Dec.field "team" Side.decodeMaybe)
-        (Dec.field "index" Dec.int)
-        (Dec.field "message" Dec.string)
+longPollEvents m =
+    Api.longPollEvents m.id m.player (lastEvent m) (LongPoll m.id m.seed) (m.id ++ m.seed) m.client
 
 
 
@@ -449,9 +343,6 @@ viewEvent model e =
                         [ div []
                             [ text "Side "
                             , text (Side.toString s)
-                            , text " ("
-                            , text e.name
-                            , text ") "
                             , text " tapped "
                             , span [ Attr.class "chat-color", Attr.class (Color.toString (Cell.sideColor (Side.opposite s) c)) ] [ text c.word ]
                             , text "."

@@ -1,5 +1,6 @@
 module Main exposing (Model, Msg(..), init, main, update, view)
 
+import Api
 import Browser
 import Browser.Navigation as Nav
 import Dict
@@ -27,7 +28,7 @@ type alias Model =
     { key : Nav.Key
     , user : User.User
     , page : Page
-    , apiUrl : String
+    , apiClient : Api.Client
     }
 
 
@@ -46,7 +47,7 @@ init encodedUser url key =
             ( { key = key
               , user = User.User "" ""
               , page = Error (Json.Decode.errorToString e)
-              , apiUrl = apiUrl url
+              , apiClient = Api.init url
               }
             , Cmd.none
             )
@@ -56,21 +57,8 @@ init encodedUser url key =
                 { key = key
                 , user = user
                 , page = Home ""
-                , apiUrl = apiUrl url
+                , apiClient = Api.init url
                 }
-
-
-apiUrl : Url.Url -> String
-apiUrl url =
-    case url.host of
-        "localhost" ->
-            Url.toString { url | port_ = Just 8080, path = "", query = Nothing, fragment = Nothing }
-
-        "www.codenamesgreen.com" ->
-            Url.toString { url | host = "api.codenamesgreen.com", path = "", query = Nothing, fragment = Nothing }
-
-        _ ->
-            Url.toString { url | host = "api." ++ url.host, path = "", query = Nothing, fragment = Nothing }
 
 
 
@@ -86,7 +74,7 @@ type Msg
     | NextGame
     | PickSide Side.Side
     | GameUpdate Game.Msg
-    | GotGame (Result Http.Error Game.GameData)
+    | GotGame (Result Http.Error Api.GameState)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -148,14 +136,14 @@ update msg model =
                 GameInProgress old ->
                     let
                         ( gameModel, gameCmd ) =
-                            Game.init old.id data model.user.playerId model.user.name model.apiUrl
+                            Game.init old.id data model.user.playerId model.user.name model.apiClient
                     in
                     ( { model | page = GameInProgress gameModel }, Cmd.map GameUpdate gameCmd )
 
                 GameLoading id ->
                     let
                         ( gameModel, gameCmd ) =
-                            Game.init id data model.user.playerId model.user.name model.apiUrl
+                            Game.init id data model.user.playerId model.user.name model.apiClient
                     in
                     ( { model | page = GameInProgress gameModel }, Cmd.map GameUpdate gameCmd )
 
@@ -166,10 +154,13 @@ update msg model =
             case model.page of
                 GameInProgress game ->
                     let
-                        old =
+                        player =
                             game.player
+
+                        ( updatedGame, cmd ) =
+                            Game.updatePlayer game { player | side = Just side }
                     in
-                    ( { model | page = GameInProgress { game | player = { old | side = Just side } } }, Cmd.none )
+                    ( { model | page = GameInProgress updatedGame }, Cmd.map GameUpdate cmd )
 
                 _ ->
                     ( model, Cmd.none )
@@ -197,7 +188,7 @@ stepUrl url model =
 
 stepGameView : Model -> String -> Maybe String -> ( Model, Cmd Msg )
 stepGameView model id prevSeed =
-    ( { model | page = GameLoading id }, Game.maybeMakeGame model.apiUrl id prevSeed GotGame )
+    ( { model | page = GameLoading id }, Api.maybeMakeGame id prevSeed GotGame model.apiClient )
 
 
 type Route
