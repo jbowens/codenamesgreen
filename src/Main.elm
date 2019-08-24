@@ -5,7 +5,7 @@ import Browser
 import Browser.Navigation as Nav
 import Dict
 import Game
-import Html exposing (Html, a, button, div, form, h1, h2, h3, img, input, p, span, strong, text)
+import Html exposing (Html, a, button, div, form, h1, h2, h3, input, p, span, strong, text)
 import Html.Attributes as Attr
 import Html.Events exposing (onClick, onInput, onSubmit)
 import Html.Lazy exposing (lazy, lazy2)

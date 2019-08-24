@@ -119,7 +119,6 @@ longPollEvents :
     , player : Player
     , lastEventId : Int
     , toMsg : Result Http.Error Update -> msg
-    , tracker : String
     , client : Client
     }
     -> Cmd msg
@@ -140,7 +139,7 @@ longPollEvents r =
                 )
         , expect = Http.expectJson r.toMsg decodeUpdate
         , timeout = Just 45000
-        , tracker = Just r.tracker
+        , tracker = Nothing
         }
 
 

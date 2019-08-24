@@ -1,4 +1,4 @@
-module Game exposing (Model, Msg(..), init, update, updatePlayer, viewBoard, viewEventLog, viewKeycard, viewStatus)
+module Game exposing (Model, Msg(..), init, update, viewBoard, viewEventLog, viewKeycard, viewStatus)
 
 import Api exposing (Event, Update)
 import Array exposing (Array)
@@ -94,7 +94,7 @@ status g =
             Start
 
         Just turn ->
-            if exposedBlack (Array.toList g.cells) then
+            if exposedBlack <| Array.toList <| g.cells then
                 Lost greens
 
             else if greens == 0 then
@@ -187,16 +187,6 @@ update msg model =
                     )
 
 
-updatePlayer : Model -> Player -> ( Model, Cmd Msg )
-updatePlayer m player =
-    ( { m | player = player }
-    , Cmd.batch
-        [ Http.cancel "longpoll"
-        , longPollEvents m
-        ]
-    )
-
-
 applyUpdate : Model -> Update -> ( Model, Cmd Msg )
 applyUpdate model up =
     if up.seed /= model.seed then
@@ -268,7 +258,6 @@ longPollEvents m =
         , player = m.player
         , lastEventId = lastEvent m
         , toMsg = LongPoll m.id m.seed
-        , tracker = "longpoll"
         , client = m.client
         }
 
