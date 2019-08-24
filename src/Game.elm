@@ -17,33 +17,34 @@ import Json.Encode as Enc
 import Player exposing (Player)
 import Side exposing (Side)
 import Task
+import User exposing (User)
 
 
-init : String -> Api.GameState -> String -> String -> Api.Client -> ( Model, Cmd Msg )
-init id data playerId playerName client =
+init : Api.GameState -> User -> Api.Client -> ( Model, Cmd Msg )
+init state user client =
     let
         model =
             List.foldl applyEvent
-                { id = id
-                , seed = data.seed
+                { id = state.id
+                , seed = state.seed
                 , players = Dict.empty
                 , events = []
                 , cells =
                     List.map3 (\w l1 l2 -> ( w, ( False, l1 ), ( False, l2 ) ))
-                        data.words
-                        data.oneLayout
-                        data.twoLayout
+                        state.words
+                        state.oneLayout
+                        state.twoLayout
                         |> List.indexedMap (\i ( w, ( e1, l1 ), ( e2, l2 ) ) -> Cell i w ( e1, l1 ) ( e2, l2 ))
                         |> Array.fromList
-                , player = { id = playerId, name = playerName, side = Nothing }
+                , player = { id = user.playerId, name = user.name, side = Nothing }
                 , turn = Nothing
                 , tokensConsumed = 0
                 , client = client
                 }
-                data.events
+                state.events
 
         player =
-            { id = playerId, name = playerName, side = Dict.get playerId model.players }
+            { id = user.playerId, name = user.name, side = Dict.get user.playerId model.players }
 
         modelWithPlayer =
             { model | player = player }

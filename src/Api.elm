@@ -33,7 +33,8 @@ type alias Client =
 
 
 type alias GameState =
-    { seed : String
+    { id : String
+    , seed : String
     , words : List String
     , events : List Event
     , oneLayout : List Color
@@ -167,13 +168,14 @@ maybeMakeGame r =
                       )
                     ]
                 )
-        , expect = Http.expectJson r.toMsg decodeGameState
+        , expect = Http.expectJson r.toMsg (decoderGameState r.gameId)
         }
 
 
-decodeGameState : D.Decoder GameState
-decodeGameState =
-    D.map5 GameState
+decoderGameState : String -> D.Decoder GameState
+decoderGameState id =
+    D.map6 GameState
+        (D.succeed id)
         (D.field "state" (D.field "seed" D.string))
         (D.field "words" (D.list D.string))
         (D.field "state" (D.field "events" (D.list decodeEvent)))

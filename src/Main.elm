@@ -131,19 +131,19 @@ update msg model =
                 _ ->
                     ( model, Cmd.none )
 
-        GotGame (Ok data) ->
+        GotGame (Ok state) ->
             case model.page of
                 GameInProgress old ->
                     let
                         ( gameModel, gameCmd ) =
-                            Game.init old.id data model.user.playerId model.user.name model.apiClient
+                            Game.init state model.user model.apiClient
                     in
                     ( { model | page = GameInProgress gameModel }, Cmd.map GameUpdate gameCmd )
 
                 GameLoading id ->
                     let
                         ( gameModel, gameCmd ) =
-                            Game.init id data model.user.playerId model.user.name model.apiClient
+                            Game.init state model.user model.apiClient
                     in
                     ( { model | page = GameInProgress gameModel }, Cmd.map GameUpdate gameCmd )
 
