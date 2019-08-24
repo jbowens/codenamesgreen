@@ -216,7 +216,7 @@ input#game-id {
   display: flex;
   font-size: 0.7em;
   font-weight: bold;
-  justify-content: space-evenly;
+  justify-content: flex-start;
 }
 
 #key-list .crossed {
@@ -226,8 +226,8 @@ input#game-id {
 #key-list .greens { color: #82b34a; }
 #key-list .tans { color: #D2B48C; }
 #key-list ul {
-  flex: 1 0 1;
-  margin: 0;
+  flex: 0 0 auto;
+  margin: 0 1em;
   padding: 0;
   list-style: none;
 }
