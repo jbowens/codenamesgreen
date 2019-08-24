@@ -164,6 +164,7 @@ update msg model =
             applyUpdate model up
 
         GameUpdate (Err err) ->
+            -- TODO: flash an error message?
             ( model, Cmd.none )
 
         WordPicked cell ->
@@ -236,6 +237,7 @@ applyGuess : Event -> Cell -> Side -> Model -> Model
 applyGuess e cell side model =
     { model
         | cells = Array.set e.index (Cell.tapped side cell) model.cells
+        , events = e :: model.events
         , turn =
             if Cell.sideColor (Side.opposite side) cell == Color.Tan then
                 Just (Side.opposite side)
@@ -243,12 +245,22 @@ applyGuess e cell side model =
             else
                 Just side
         , tokensConsumed =
-            if model.turn == Just (Side.opposite side) || Cell.sideColor (Side.opposite side) cell == Color.Tan then
-                model.tokensConsumed + 1
+            case ( model.turn == Just side, Cell.sideColor (Side.opposite side) cell ) of
+                ( False, Color.Tan ) ->
+                    -- If it's not your turn, we need to consume one
+                    -- token to end the previous side's turn at guessing.
+                    -- If the currently guessing team hit a tan, they're
+                    -- done guessing and we need to consume a second.
+                    model.tokensConsumed + 2
 
-            else
-                model.tokensConsumed
-        , events = e :: model.events
+                ( _, Color.Tan ) ->
+                    model.tokensConsumed + 1
+
+                ( False, _ ) ->
+                    model.tokensConsumed + 1
+
+                _ ->
+                    model.tokensConsumed
     }
 
 
