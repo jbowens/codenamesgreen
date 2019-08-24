@@ -1,4 +1,4 @@
-module Cell exposing (Cell, Display(..), display, isExposed, sideColor, tapped, view)
+module Cell exposing (Cell, Display(..), display, isExposed, oppColor, sideColor, tapped, view)
 
 import Color
 import Html exposing (Html, div, i, text)
@@ -38,6 +38,11 @@ display cell =
 
         ( ( exposedA, _ ), ( exposedB, _ ) ) ->
             Hidden exposedA exposedB
+
+
+oppColor : Side.Side -> Cell -> Color.Color
+oppColor side cell =
+    sideColor (Side.opposite side) cell
 
 
 sideColor : Side.Side -> Cell -> Color.Color

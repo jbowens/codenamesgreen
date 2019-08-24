@@ -239,13 +239,13 @@ applyGuess e cell side model =
         | cells = Array.set e.index (Cell.tapped side cell) model.cells
         , events = e :: model.events
         , turn =
-            if Cell.sideColor (Side.opposite side) cell == Color.Tan then
+            if Cell.oppColor side cell == Color.Tan then
                 Just (Side.opposite side)
 
             else
                 Just side
         , tokensConsumed =
-            case ( model.turn == Just side, Cell.sideColor (Side.opposite side) cell ) of
+            case ( model.turn == Just side, Cell.oppColor side cell ) of
                 ( False, Color.Tan ) ->
                     -- If it's not your turn, we need to consume one
                     -- token to end the previous side's turn at guessing.
@@ -360,7 +360,7 @@ viewEvent model e =
                             [ text "Side "
                             , text (Side.toString s)
                             , text " tapped "
-                            , span [ Attr.class "chat-color", Attr.class (Color.toString (Cell.sideColor (Side.opposite s) c)) ] [ text c.word ]
+                            , span [ Attr.class "chat-color", Attr.class (Color.toString (Cell.oppColor s c)) ] [ text c.word ]
                             , text "."
                             ]
                         ]
