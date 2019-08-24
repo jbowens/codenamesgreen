@@ -157,12 +157,11 @@ func (h *handler) handleGuess(rw http.ResponseWriter, req *http.Request) {
 // POST /chat
 func (h *handler) handleChat(rw http.ResponseWriter, req *http.Request) {
 	var body struct {
-		GameID    string `json:"game_id"`
-		PlayerID  string `json:"player_id"`
-		Name      string `json:"name"`
-		Team      int    `json:"team"`
-		Message   string `json:"message"`
-		LastEvent int    `json:"last_event"`
+		GameID   string `json:"game_id"`
+		PlayerID string `json:"player_id"`
+		Name     string `json:"name"`
+		Team     int    `json:"team"`
+		Message  string `json:"message"`
 	}
 
 	err := json.NewDecoder(req.Body).Decode(&body)
@@ -185,11 +184,10 @@ func (h *handler) handleChat(rw http.ResponseWriter, req *http.Request) {
 		Type:     "chat",
 		Team:     body.Team,
 		PlayerID: body.PlayerID,
+		Name:     body.Name,
 		Message:  body.Message,
 	})
-
-	evts, _ := g.eventsSince(body.LastEvent)
-	writeJSON(rw, GameUpdate{Seed: g.Seed, Events: evts})
+	writeJSON(rw, map[string]string{"status": "ok"})
 }
 
 // POST /events

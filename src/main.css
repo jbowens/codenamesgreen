@@ -253,14 +253,39 @@ input#game-id {
   flex: 1 1 auto;
 }
 
+#event-log .side { color: #9d9d9d; }
+
 #event-log #events {
   overflow-y: scroll;
   height: 20vh;
   padding: 0.5em;
+  border: 1px #EEE solid;
 }
 
 #event-log #events div {
   padding: 0.25em 0;
+}
+#chat-form {
+  margin-top: 0.5em;
+}
+#chat-form input {
+  padding: 0.75em;
+  font-size: 1em;
+  border-radius: 0.5em;
+  border: 1px #BBB solid;
+}
+#chat-form button {
+  font-size: 0.9em;
+  margin-left: 0.5em;
+  background: #b1e773;
+  padding: 1em;
+  border: none;
+  border-radius: 0.5em;
+  cursor: pointer;
+}
+
+#chat-form button:hover {
+  background: #c3f18d;
 }
 
 .chat-color {

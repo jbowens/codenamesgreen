@@ -1,4 +1,4 @@
-module Game exposing (Model, Msg(..), init, update, viewBoard, viewEventLog, viewKeycard, viewStatus)
+module Game exposing (Model, Msg(..), init, update, viewBoard, viewEvents, viewKeycard, viewStatus)
 
 import Api exposing (Event, Update)
 import Array exposing (Array)
@@ -337,15 +337,13 @@ viewBoard model =
         )
 
 
-viewEventLog : Model -> Html Msg
-viewEventLog model =
-    div [ Attr.id "event-log" ]
-        [ div [ Attr.id "events" ]
-            (model.events
-                |> List.reverse
-                |> List.concatMap (viewEvent model)
-            )
-        ]
+viewEvents : Model -> Html Msg
+viewEvents model =
+    div [ Attr.id "events" ]
+        (model.events
+            |> List.reverse
+            |> List.concatMap (viewEvent model)
+        )
 
 
 viewEvent : Model -> Event -> List (Html Msg)
@@ -380,7 +378,16 @@ viewEvent model e =
                 |> Maybe.withDefault []
 
         "chat" ->
-            [ div [] [ text e.name, text ": ", text e.message ] ]
+            let
+                sideEl =
+                    case e.side of
+                        Just s ->
+                            span [ Attr.class "side" ] [ text (" (" ++ Side.toString s ++ ")") ]
+
+                        Nothing ->
+                            text ""
+            in
+            [ div [] [ text e.name, sideEl, text ": ", text e.message ] ]
 
         _ ->
             []

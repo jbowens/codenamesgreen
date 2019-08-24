@@ -1,4 +1,4 @@
-module Api exposing (Client, Event, GameState, Update, init, longPollEvents, maybeMakeGame, ping, submitGuess)
+module Api exposing (Client, Event, GameState, Update, chat, init, longPollEvents, maybeMakeGame, ping, submitGuess)
 
 import Color exposing (Color)
 import Http
@@ -109,6 +109,31 @@ ping r =
                     , ( "player_id", E.string r.player.id )
                     , ( "name", E.string r.player.name )
                     , ( "team", Side.encodeMaybe r.player.side )
+                    ]
+                )
+        , expect = Http.expectWhatever r.toMsg
+        }
+
+
+chat :
+    { gameId : String
+    , player : Player
+    , toMsg : Result Http.Error () -> msg
+    , message : String
+    , client : Client
+    }
+    -> Cmd msg
+chat r =
+    Http.post
+        { url = endpointUrl r.client.baseUrl "/chat"
+        , body =
+            Http.jsonBody
+                (E.object
+                    [ ( "game_id", E.string r.gameId )
+                    , ( "player_id", E.string r.player.id )
+                    , ( "name", E.string r.player.name )
+                    , ( "team", Side.encodeMaybe r.player.side )
+                    , ( "message", E.string r.message )
                     ]
                 )
         , expect = Http.expectWhatever r.toMsg

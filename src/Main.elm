@@ -37,7 +37,7 @@ type Page
     | Error String
     | Home String
     | GameLoading String
-    | GameInProgress Game.Model
+    | GameInProgress Game.Model String
 
 
 init : Json.Decode.Value -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -75,6 +75,8 @@ type Msg
     | PickSide Side.Side
     | GameUpdate Game.Msg
     | GotGame (Result Http.Error Api.GameState)
+    | ChatMessageChanged String
+    | SendChat
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -113,7 +115,7 @@ update msg model =
 
         NextGame ->
             case model.page of
-                GameInProgress game ->
+                GameInProgress game "" ->
                     stepGameView model game.id (Just game.seed)
 
                 _ ->
@@ -121,38 +123,38 @@ update msg model =
 
         GameUpdate gameMsg ->
             case model.page of
-                GameInProgress game ->
+                GameInProgress game chat ->
                     let
                         ( newGame, gameCmd ) =
                             Game.update gameMsg game
                     in
-                    ( { model | page = GameInProgress newGame }, Cmd.map GameUpdate gameCmd )
+                    ( { model | page = GameInProgress newGame chat }, Cmd.map GameUpdate gameCmd )
 
                 _ ->
                     ( model, Cmd.none )
 
         GotGame (Ok state) ->
             case model.page of
-                GameInProgress old ->
+                GameInProgress old chat ->
                     let
                         ( gameModel, gameCmd ) =
                             Game.init state model.user model.apiClient
                     in
-                    ( { model | page = GameInProgress gameModel }, Cmd.map GameUpdate gameCmd )
+                    ( { model | page = GameInProgress gameModel chat }, Cmd.map GameUpdate gameCmd )
 
                 GameLoading id ->
                     let
                         ( gameModel, gameCmd ) =
                             Game.init state model.user model.apiClient
                     in
-                    ( { model | page = GameInProgress gameModel }, Cmd.map GameUpdate gameCmd )
+                    ( { model | page = GameInProgress gameModel "" }, Cmd.map GameUpdate gameCmd )
 
                 _ ->
                     ( model, Cmd.none )
 
         PickSide side ->
             case model.page of
-                GameInProgress oldGame ->
+                GameInProgress oldGame chat ->
                     let
                         oldPlayer =
                             oldGame.player
@@ -160,7 +162,7 @@ update msg model =
                         game =
                             { oldGame | player = { oldPlayer | side = Just side } }
                     in
-                    ( { model | page = GameInProgress game }
+                    ( { model | page = GameInProgress game chat }
                     , Api.ping
                         -- Pinging will immediately record the change on the
                         -- serverside, without having to wait for the long
@@ -168,6 +170,30 @@ update msg model =
                         { gameId = game.id
                         , player = game.player
                         , toMsg = always NoOp
+                        , client = model.apiClient
+                        }
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        ChatMessageChanged message ->
+            case model.page of
+                GameInProgress g _ ->
+                    ( { model | page = GameInProgress g message }, Cmd.none )
+
+                _ ->
+                    ( model, Cmd.none )
+
+        SendChat ->
+            case model.page of
+                GameInProgress g message ->
+                    ( { model | page = GameInProgress g "" }
+                    , Api.chat
+                        { gameId = g.id
+                        , player = g.player
+                        , toMsg = always NoOp
+                        , message = message
                         , client = model.apiClient
                         }
                     )
@@ -240,8 +266,8 @@ view model =
             , body = viewGameLoading id
             }
 
-        GameInProgress game ->
-            viewGameInProgress game
+        GameInProgress game chat ->
+            viewGameInProgress game chat
 
         Error msg ->
             viewError msg
@@ -278,21 +304,21 @@ viewError msg =
     }
 
 
-viewGameInProgress : Game.Model -> Browser.Document Msg
-viewGameInProgress g =
+viewGameInProgress : Game.Model -> String -> Browser.Document Msg
+viewGameInProgress g chatMessage =
     { title = "Codenames Green"
     , body =
         [ viewHeader
         , div [ Attr.id "game" ]
             [ Html.map GameUpdate (Game.viewBoard g)
-            , div [ Attr.id "sidebar" ] (viewSidebar g)
+            , div [ Attr.id "sidebar" ] (viewSidebar g chatMessage)
             ]
         ]
     }
 
 
-viewSidebar : Game.Model -> List (Html Msg)
-viewSidebar g =
+viewSidebar : Game.Model -> String -> List (Html Msg)
+viewSidebar g chatMessage =
     let
         sides =
             Dict.values g.players
@@ -312,16 +338,27 @@ viewSidebar g =
             [ viewJoinASide playersOnSideA playersOnSideB ]
 
         Just side ->
-            viewActiveSidebar g side
+            viewActiveSidebar g side chatMessage
 
 
-viewActiveSidebar : Game.Model -> Side.Side -> List (Html Msg)
-viewActiveSidebar g side =
+viewActiveSidebar : Game.Model -> Side.Side -> String -> List (Html Msg)
+viewActiveSidebar g side chatMessage =
     [ lazy Game.viewStatus g
     , Html.map GameUpdate (lazy2 Game.viewKeycard g side)
-    , Html.map GameUpdate (lazy Game.viewEventLog g)
+    , lazy2 viewEventBox g chatMessage
     , viewNextGameButton
     ]
+
+
+viewEventBox : Game.Model -> String -> Html Msg
+viewEventBox g chatMessage =
+    div [ Attr.id "event-log" ]
+        [ Html.map GameUpdate (Game.viewEvents g)
+        , form [ Attr.id "chat-form", onSubmit SendChat ]
+            [ input [ Attr.value chatMessage, onInput ChatMessageChanged ] []
+            , button [] [ text "Send" ]
+            ]
+        ]
 
 
 viewNextGameButton : Html Msg
