@@ -6,7 +6,7 @@ import Browser.Dom as Dom
 import Cell exposing (Cell)
 import Color exposing (Color)
 import Dict
-import Html exposing (Html, div, h3, i, span, text)
+import Html exposing (Html, div, h3, i, li, span, text, ul)
 import Html.Attributes as Attr
 import Html.Events exposing (onClick)
 import Html.Keyed as Keyed
@@ -40,6 +40,7 @@ init state user client =
                 , turn = Nothing
                 , tokensConsumed = 0
                 , client = client
+                , keyView = ShowWords
                 }
                 state.events
 
@@ -66,7 +67,13 @@ type alias Model =
     , turn : Maybe Side
     , tokensConsumed : Int
     , client : Api.Client
+    , keyView : KeyView
     }
+
+
+type KeyView
+    = ShowWords
+    | ShowKeycard
 
 
 type Status
@@ -131,6 +138,7 @@ type Msg
     | LongPoll String String (Result Http.Error Api.Update)
     | GameUpdate (Result Http.Error Api.Update)
     | WordPicked Cell
+    | ToggleKeyView KeyView
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -166,6 +174,9 @@ update msg model =
         GameUpdate (Err err) ->
             -- TODO: flash an error message?
             ( model, Cmd.none )
+
+        ToggleKeyView newSetting ->
+            ( { model | keyView = newSetting }, Cmd.none )
 
         WordPicked cell ->
             case model.player.side of
@@ -375,18 +386,43 @@ viewEvent model e =
             []
 
 
-viewKeycard : Model -> Side -> Html a
+viewKeycard : Model -> Side -> Html Msg
 viewKeycard model side =
-    div [ Attr.id "key-card" ]
-        (model.cells
-            |> Array.toList
-            |> List.map (Cell.sideColor side)
-            |> List.map
-                (\c ->
-                    div
-                        [ Attr.class "cell"
-                        , Attr.class (Color.toString c)
-                        ]
-                        []
+    case model.keyView of
+        ShowWords ->
+            let
+                cells =
+                    Array.toList model.cells
+
+                cellsOf =
+                    \color -> List.filter (\c -> Cell.sideColor side c == color) cells
+            in
+            div [ Attr.id "key-list", onClick (ToggleKeyView ShowKeycard) ]
+                [ ul [ Attr.class "greens" ]
+                    (cellsOf Color.Green
+                        |> List.map (\x -> li [ Attr.classList [ ( "crossed", Cell.display x == Cell.ExposedGreen ) ] ] [ text x.word ])
+                    )
+                , ul [ Attr.class "blacks" ]
+                    (cellsOf Color.Black
+                        |> List.map (\x -> li [ Attr.classList [ ( "crossed", Cell.isExposed side x ) ] ] [ text x.word ])
+                    )
+                , ul [ Attr.class "tans" ]
+                    (cellsOf Color.Tan
+                        |> List.map (\x -> li [ Attr.classList [ ( "crossed", Cell.isExposed side x ) ] ] [ text x.word ])
+                    )
+                ]
+
+        ShowKeycard ->
+            div [ Attr.id "key-card", onClick (ToggleKeyView ShowWords) ]
+                (model.cells
+                    |> Array.toList
+                    |> List.map (Cell.sideColor side)
+                    |> List.map
+                        (\c ->
+                            div
+                                [ Attr.class "cell"
+                                , Attr.class (Color.toString c)
+                                ]
+                                []
+                        )
                 )
-        )

@@ -318,7 +318,7 @@ viewSidebar g =
 viewActiveSidebar : Game.Model -> Side.Side -> List (Html Msg)
 viewActiveSidebar g side =
     [ lazy Game.viewStatus g
-    , lazy2 Game.viewKeycard g side
+    , Html.map GameUpdate (lazy2 Game.viewKeycard g side)
     , Html.map GameUpdate (lazy Game.viewEventLog g)
     , viewNextGameButton
     ]

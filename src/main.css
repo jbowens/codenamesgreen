@@ -200,12 +200,36 @@ input#game-id {
   display: block;
 }
 
-#key-card {
+#key-card, #key-list {
   flex: 0 0 20%;
+  cursor: pointer;
+}
+
+#key-card {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   grid-gap: 0.5em;
   max-width: 16em;
+}
+
+#key-list {
+  display: flex;
+  font-size: 0.7em;
+  font-weight: bold;
+  justify-content: space-evenly;
+}
+
+#key-list .crossed {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+#key-list .greens { color: #82b34a; }
+#key-list .tans { color: #D2B48C; }
+#key-list ul {
+  flex: 1 0 1;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 #key-card .cell {
@@ -278,7 +302,7 @@ input#game-id {
     flex-direction: row;
   }
 
-  #key-card {
+  #key-card, #key-list {
 	flex: 2 1 40vw
   }
 }
