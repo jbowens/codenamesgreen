@@ -26,6 +26,7 @@ func Handler(wordLists map[string][]string) http.Handler {
 	h.mux.HandleFunc("/guess", h.handleGuess)
 	h.mux.HandleFunc("/chat", h.handleChat)
 	h.mux.HandleFunc("/events", h.handleEvents)
+	h.mux.HandleFunc("/ping", h.handlePing)
 
 	// Periodically remove games that are old and inactive.
 	go func() {
@@ -233,6 +234,37 @@ func (h *handler) handleEvents(rw http.ResponseWriter, req *http.Request) {
 	case <-time.After(25 * time.Second):
 	}
 	writeJSON(rw, GameUpdate{Seed: g.Seed, Events: evts})
+}
+
+// POST /ping
+// This endpoint is a convenient way to record updates to player config
+// without waiting for the long-polling loop to make a new request.
+// It only calls `markSeen` with the provided player information
+// and has no other effects.
+func (h *handler) handlePing(rw http.ResponseWriter, req *http.Request) {
+	var body struct {
+		GameID   string `json:"game_id"`
+		PlayerID string `json:"player_id"`
+		Name     string `json:"name"`
+		Team     int    `json:"team"`
+	}
+
+	err := json.NewDecoder(req.Body).Decode(&body)
+	if err != nil || body.GameID == "" || body.PlayerID == "" {
+		writeError(rw, "malformed_body", "Unable to parse request body.", 400)
+		return
+	}
+
+	h.mu.Lock()
+	g, ok := h.games[body.GameID]
+	h.mu.Unlock()
+	if !ok {
+		writeError(rw, "not_found", "Game not found", 404)
+		return
+	}
+
+	g.markSeen(body.PlayerID, body.Name, body.Team, time.Now())
+	writeJSON(rw, map[string]string{"status": "ok"})
 }
 
 type GameUpdate struct {

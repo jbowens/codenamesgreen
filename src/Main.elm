@@ -152,15 +152,25 @@ update msg model =
 
         PickSide side ->
             case model.page of
-                GameInProgress game ->
+                GameInProgress oldGame ->
                     let
-                        player =
-                            game.player
+                        oldPlayer =
+                            oldGame.player
 
-                        ( updatedGame, cmd ) =
-                            Game.updatePlayer game { player | side = Just side }
+                        game =
+                            { oldGame | player = { oldPlayer | side = Just side } }
                     in
-                    ( { model | page = GameInProgress updatedGame }, Cmd.map GameUpdate cmd )
+                    ( { model | page = GameInProgress game }
+                    , Api.ping
+                        -- Pinging will immediately record the change on the
+                        -- serverside, without having to wait for the long
+                        -- poll to make a new request.
+                        { gameId = game.id
+                        , player = game.player
+                        , toMsg = always NoOp
+                        , client = model.apiClient
+                        }
+                    )
 
                 _ ->
                     ( model, Cmd.none )

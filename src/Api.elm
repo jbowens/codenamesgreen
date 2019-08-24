@@ -1,4 +1,4 @@
-module Api exposing (Client, Event, GameState, Update, init, longPollEvents, maybeMakeGame, submitGuess)
+module Api exposing (Client, Event, GameState, Update, init, longPollEvents, maybeMakeGame, ping, submitGuess)
 
 import Color exposing (Color)
 import Http
@@ -88,6 +88,29 @@ submitGuess r =
                     ]
                 )
         , expect = Http.expectJson r.toMsg decodeUpdate
+        }
+
+
+ping :
+    { gameId : String
+    , player : Player
+    , toMsg : Result Http.Error () -> msg
+    , client : Client
+    }
+    -> Cmd msg
+ping r =
+    Http.post
+        { url = endpointUrl r.client.baseUrl "/ping"
+        , body =
+            Http.jsonBody
+                (E.object
+                    [ ( "game_id", E.string r.gameId )
+                    , ( "player_id", E.string r.player.id )
+                    , ( "name", E.string r.player.name )
+                    , ( "team", Side.encodeMaybe r.player.side )
+                    ]
+                )
+        , expect = Http.expectWhatever r.toMsg
         }
 
 
