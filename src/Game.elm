@@ -256,9 +256,9 @@ applyGuess e cell side model =
             else
                 Just side
         , tokensConsumed =
-            case ( model.turn == Just side, Cell.oppColor side cell ) of
-                ( False, Color.Tan ) ->
-                    -- If it's not your turn, we need to consume one
+            case ( model.turn == Just (Side.opposite side), Cell.oppColor side cell ) of
+                ( True, Color.Tan ) ->
+                    -- If it's the other side's turn, we need to consume one
                     -- token to end the previous side's turn at guessing.
                     -- If the currently guessing team hit a tan, they're
                     -- done guessing and we need to consume a second.
@@ -267,7 +267,7 @@ applyGuess e cell side model =
                 ( _, Color.Tan ) ->
                     model.tokensConsumed + 1
 
-                ( False, _ ) ->
+                ( True, _ ) ->
                     model.tokensConsumed + 1
 
                 _ ->
