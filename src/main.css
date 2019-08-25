@@ -329,7 +329,7 @@ input#game-id {
   flex: 0 0 auto;
   display: flex;
   justify-content: flex-start;
-  align-items: center;
+  align-items: top;
   font-size: 0.8em;
 }
 
@@ -366,6 +366,7 @@ input#game-id {
   body {
     font-size: 0.8em;
   }
+  #key-list { font-size: 0.6em; }
 }
 
 @media (orientation: landscape) {
@@ -392,9 +393,16 @@ input#game-id {
 
   #sidebar {
     flex-direction: row;
+    flex: 0 0 100%;
+    padding: 0;
   }
 
   #key-card, #key-list {
 	flex: 2 1 40vw
   }
+
+  #status { order: 2; }
+  #button-row { order: 3; }
+  #key-card, #key-list { order: 1; }
+  #event-log { order: 4; }
 }
