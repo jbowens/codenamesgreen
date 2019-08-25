@@ -7,13 +7,17 @@ body {
 #layout {
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  height: 100vh;
 }
 
 #layout #header {
-  flex: 0 0 auto;
+  flex: none;
 }
 #layout #content {
-  flex: 1 0 auto;
+  flex: auto;
+  min-height: 0;
+  display: flex;
 }
 
 #header a {
@@ -100,18 +104,18 @@ input#game-id {
 #game {
   display: flex;
   flex-direction: row;
-  flex: 1;
+  flex: auto;
   flex-wrap: wrap;
 }
 
 #status {
-  flex: 0 0 auto;
+  flex: none;
   font-family: "Exo 2", sans-serif;
   display: flex;
 }
 
 #status div {
-  flex: 1 0 auto;
+  flex: auto;
   padding: 0.5em;
 }
 
@@ -183,11 +187,12 @@ input#game-id {
 
 
 #sidebar {
-  flex: 1 0 auto;
+  flex: auto;
   display: flex;
   flex-direction: column;
   padding: 0 1%;
-  flex-wrap: wrap;
+  min-height: 0;
+  max-height: 100%;
 }
 
 #join-a-team .buttons {
@@ -215,7 +220,7 @@ input#game-id {
 }
 
 #key-card, #key-list {
-  flex: 0 1 20%;
+  flex: none;
   cursor: pointer;
 }
 
@@ -262,18 +267,20 @@ input#game-id {
 
 #event-log {
   font-size: 0.9em;
-  flex: 1 1 auto;
+  flex: auto;
   display: flex;
   flex-direction: column;
+  min-height: 0;
 }
 
 #events .side { color: #9d9d9d; }
 
 #event-log #events {
-  flex: 1 0 auto;
+  flex: auto;
   overflow-y: scroll;
   padding: 0.5em;
   border: 1px #EEE solid;
+  min-height; 200px;
 }
 
 #event-log #events div {
@@ -284,15 +291,15 @@ input#game-id {
 }
 
 #chat-form {
-  flex: 0 0 auto;
+  flex: none;
   margin-top: 0.5em;
   display: flex;
 }
 #chat-form button {
-  flex: 0 0 auto;
+  flex: none;
 }
 #chat-form input {
-  flex: 1 0 auto;
+  flex: auto;
   padding: 0.25em;
   font-size: 1em;
   border-radius: 0.2em;
@@ -326,7 +333,7 @@ input#game-id {
   color: #000;
 }
 #button-row {
-  flex: 0 0 auto;
+  flex: none;
   display: flex;
   justify-content: flex-start;
   align-items: top;
@@ -334,7 +341,7 @@ input#game-id {
 }
 
 #button-row div {
-  flex: 0 0 auto;
+  flex: none;
   margin: 0.5em 0.5em 0 0;
 }
 
@@ -373,9 +380,6 @@ input#game-id {
   #sidebar {
     max-width: 400px;
   }
-  #key-card, #key-list {
-    flex: 0 1 20vh;
-  }
 }
 
 @media (orientation: portrait) {
@@ -395,6 +399,7 @@ input#game-id {
     flex-direction: row;
     flex: 0 0 100%;
     padding: 0;
+    min-height: 0;
   }
 
   #key-card, #key-list {
