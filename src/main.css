@@ -4,6 +4,18 @@ body {
   color: #293c4b;
 }
 
+#layout {
+  display: flex;
+  flex-direction: column;
+}
+
+#layout #header {
+  flex: 0 0 auto;
+}
+#layout #content {
+  flex: 1 0 auto;
+}
+
 #header a {
   text-decoration: none;
   color: #000;
@@ -95,13 +107,12 @@ input#game-id {
 #status {
   flex: 0 0 auto;
   font-family: "Exo 2", sans-serif;
-  margin-bottom: 0.5em;
   display: flex;
 }
 
 #status div {
   flex: 1 0 auto;
-  padding: 0 0.5em 0.5em 0;
+  padding: 0.5em;
 }
 
 .green-icon {
@@ -251,7 +262,6 @@ input#game-id {
 
 #event-log {
   font-size: 0.9em;
-  margin: 1em 0;
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
@@ -361,19 +371,10 @@ input#game-id {
 
 @media (orientation: landscape) {
   #sidebar {
-    max-width: 30%;
+    max-width: 400px;
   }
   #key-card, #key-list {
     flex: 0 1 20vh;
-  }
-}
-
-@media (orientation: landscape) and (max-width: 800px) {
-  #board {
-    width: 50%;
-  }
-  #sidebar {
-    max-width: 45%;
   }
 }
 

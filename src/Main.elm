@@ -289,15 +289,29 @@ view model =
 
 viewNotFound : Browser.Document Msg
 viewNotFound =
-    { title = "Codenames Green | Page not found"
+    div [ Attr.id "not-found" ]
+        [ h2 [] [ text "Page not found" ]
+        , p []
+            [ text "That page doesn't exist. "
+            , a [ Attr.href "/" ] [ text "Go to the homepage" ]
+            ]
+        ]
+        |> viewLayout (Just "Page not found")
+
+
+viewLayout : Maybe String -> Html Msg -> Browser.Document Msg
+viewLayout subtitle content =
+    { title =
+        case subtitle of
+            Just t ->
+                "Codenames Green | " ++ t
+
+            Nothing ->
+                "Codenames Green"
     , body =
-        [ viewHeader
-        , div [ Attr.id "not-found" ]
-            [ h2 [] [ text "Page not found" ]
-            , p []
-                [ text "That page doesn't exist. "
-                , a [ Attr.href "/" ] [ text "Go to the homepage" ]
-                ]
+        [ div [ Attr.id "layout" ]
+            [ viewHeader
+            , div [ Attr.id "content" ] [ content ]
             ]
         ]
     }
@@ -305,30 +319,22 @@ viewNotFound =
 
 viewError : String -> Browser.Document Msg
 viewError msg =
-    { title = "Codenames Green | Page not found"
-    , body =
-        [ viewHeader
-        , div [ Attr.id "error" ]
-            [ h2 [] [ text "Oops" ]
-            , p []
-                [ text "An unexpected error was encountered. Most likely this is the result of corrupted local storage. Try clearing all storage associated with the app." ]
-            , p [] [ strong [] [ text "Error: " ], text msg ]
-            ]
+    div [ Attr.id "error" ]
+        [ h2 [] [ text "Oops" ]
+        , p []
+            [ text "An unexpected error was encountered. Most likely this is the result of corrupted local storage. Try clearing all storage associated with the app." ]
+        , p [] [ strong [] [ text "Error: " ], text msg ]
         ]
-    }
+        |> viewLayout (Just "Error")
 
 
 viewGameInProgress : Game.Model -> String -> GameView -> Browser.Document Msg
 viewGameInProgress g chatMessage gameView =
-    { title = "Codenames Green"
-    , body =
-        [ viewHeader
-        , div [ Attr.id "game" ]
-            [ Html.map GameUpdate (Game.viewBoard g)
-            , div [ Attr.id "sidebar" ] (viewSidebar g chatMessage gameView)
-            ]
+    div [ Attr.id "game" ]
+        [ Html.map GameUpdate (Game.viewBoard g)
+        , div [ Attr.id "sidebar" ] (viewSidebar g chatMessage gameView)
         ]
-    }
+        |> viewLayout Nothing
 
 
 viewSidebar : Game.Model -> String -> GameView -> List (Html Msg)
