@@ -87,8 +87,8 @@ type Msg
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
-        LinkClicked urlRequest ->
+    case ( msg, model.page ) of
+        ( LinkClicked urlRequest, _ ) ->
             case urlRequest of
                 Browser.Internal url ->
                     ( model
@@ -100,126 +100,81 @@ update msg model =
                     , Nav.load href
                     )
 
-        UrlChanged url ->
+        ( UrlChanged url, _ ) ->
             stepUrl url model
 
-        IdChanged id ->
-            case model.page of
-                Home _ ->
-                    ( { model | page = Home id }, Cmd.none )
+        ( IdChanged id, Home _ ) ->
+            ( { model | page = Home id }, Cmd.none )
 
-                _ ->
-                    ( model, Cmd.none )
+        ( SubmitNewGame, Home id ) ->
+            ( model, Nav.pushUrl model.key (UrlBuilder.relative [ id ] []) )
 
-        SubmitNewGame ->
-            case model.page of
-                Home id ->
-                    ( model, Nav.pushUrl model.key (UrlBuilder.relative [ id ] []) )
+        ( NextGame, GameInProgress game _ _ ) ->
+            stepGameView model game.id (Just game.seed)
 
-                _ ->
-                    ( model, Cmd.none )
+        ( GameUpdate gameMsg, GameInProgress game chat gameView ) ->
+            let
+                ( newGame, gameCmd ) =
+                    Game.update gameMsg game
+            in
+            ( { model | page = GameInProgress newGame chat gameView }, Cmd.map GameUpdate gameCmd )
 
-        NextGame ->
-            case model.page of
-                GameInProgress game _ _ ->
-                    stepGameView model game.id (Just game.seed)
+        ( GotGame (Ok state), GameInProgress old chat _ ) ->
+            let
+                ( gameModel, gameCmd ) =
+                    Game.init state model.user model.apiClient
+            in
+            ( { model | page = GameInProgress gameModel chat ShowDefault }, Cmd.map GameUpdate gameCmd )
 
-                _ ->
-                    ( model, Cmd.none )
+        ( GotGame (Ok state), GameLoading id ) ->
+            let
+                ( gameModel, gameCmd ) =
+                    Game.init state model.user model.apiClient
+            in
+            ( { model | page = GameInProgress gameModel "" ShowDefault }, Cmd.map GameUpdate gameCmd )
 
-        GameUpdate gameMsg ->
-            case model.page of
-                GameInProgress game chat gameView ->
-                    let
-                        ( newGame, gameCmd ) =
-                            Game.update gameMsg game
-                    in
-                    ( { model | page = GameInProgress newGame chat gameView }, Cmd.map GameUpdate gameCmd )
+        ( PickSide side, GameInProgress oldGame chat gameView ) ->
+            let
+                oldPlayer =
+                    oldGame.player
 
-                _ ->
-                    ( model, Cmd.none )
+                game =
+                    { oldGame | player = { oldPlayer | side = Just side } }
+            in
+            ( { model | page = GameInProgress game chat gameView }
+            , Api.ping
+                -- Pinging will immediately record the change on the
+                -- serverside, without having to wait for the long
+                -- poll to make a new request.
+                { gameId = game.id
+                , player = game.player
+                , toMsg = always NoOp
+                , client = model.apiClient
+                }
+            )
 
-        GotGame (Ok state) ->
-            case model.page of
-                GameInProgress old chat _ ->
-                    let
-                        ( gameModel, gameCmd ) =
-                            Game.init state model.user model.apiClient
-                    in
-                    ( { model | page = GameInProgress gameModel chat ShowDefault }, Cmd.map GameUpdate gameCmd )
+        ( ChatMessageChanged message, GameInProgress g _ gameView ) ->
+            ( { model | page = GameInProgress g message gameView }, Cmd.none )
 
-                GameLoading id ->
-                    let
-                        ( gameModel, gameCmd ) =
-                            Game.init state model.user model.apiClient
-                    in
-                    ( { model | page = GameInProgress gameModel "" ShowDefault }, Cmd.map GameUpdate gameCmd )
+        ( SendChat, GameInProgress g message gameView ) ->
+            ( { model | page = GameInProgress g "" gameView }
+            , Api.chat
+                { gameId = g.id
+                , player = g.player
+                , toMsg = always NoOp
+                , message = message
+                , client = model.apiClient
+                }
+            )
 
-                _ ->
-                    ( model, Cmd.none )
+        ( ToggleSettings gameView, GameInProgress g message _ ) ->
+            ( { model | page = GameInProgress g message gameView }, Cmd.none )
 
-        PickSide side ->
-            case model.page of
-                GameInProgress oldGame chat gameView ->
-                    let
-                        oldPlayer =
-                            oldGame.player
-
-                        game =
-                            { oldGame | player = { oldPlayer | side = Just side } }
-                    in
-                    ( { model | page = GameInProgress game chat gameView }
-                    , Api.ping
-                        -- Pinging will immediately record the change on the
-                        -- serverside, without having to wait for the long
-                        -- poll to make a new request.
-                        { gameId = game.id
-                        , player = game.player
-                        , toMsg = always NoOp
-                        , client = model.apiClient
-                        }
-                    )
-
-                _ ->
-                    ( model, Cmd.none )
-
-        ChatMessageChanged message ->
-            case model.page of
-                GameInProgress g _ gameView ->
-                    ( { model | page = GameInProgress g message gameView }, Cmd.none )
-
-                _ ->
-                    ( model, Cmd.none )
-
-        SendChat ->
-            case model.page of
-                GameInProgress g message gameView ->
-                    ( { model | page = GameInProgress g "" gameView }
-                    , Api.chat
-                        { gameId = g.id
-                        , player = g.player
-                        , toMsg = always NoOp
-                        , message = message
-                        , client = model.apiClient
-                        }
-                    )
-
-                _ ->
-                    ( model, Cmd.none )
-
-        ToggleSettings gameView ->
-            case model.page of
-                GameInProgress g message _ ->
-                    ( { model | page = GameInProgress g message gameView }, Cmd.none )
-
-                _ ->
-                    ( model, Cmd.none )
-
-        -- TODO: display an error message
-        GotGame (Err e) ->
+        ( GotGame (Err e), _ ) ->
+            -- TODO: display an error message
             ( model, Cmd.none )
 
-        NoOp ->
+        _ ->
             ( model, Cmd.none )
 
 
