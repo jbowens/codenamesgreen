@@ -93,7 +93,6 @@ input#game-id {
 }
 
 #status {
-  max-width: 300px;
   flex: 0 0 auto;
   font-family: "Exo 2", sans-serif;
   margin-bottom: 0.5em;
@@ -116,7 +115,7 @@ input#game-id {
 }
 
 #board {
-  width: 65%;
+  flex: 0 0 65%;
   font-size: 0.9em;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
@@ -173,10 +172,10 @@ input#game-id {
 
 
 #sidebar {
+  flex: 1 0 auto;
   display: flex;
-  flex: 1;
   flex-direction: column;
-  padding: 1%;
+  padding: 0 1%;
   flex-wrap: wrap;
 }
 
@@ -205,7 +204,6 @@ input#game-id {
 }
 
 #key-card, #key-list {
-  max-width: 300px;
   flex: 0 1 20%;
   cursor: pointer;
 }
@@ -221,7 +219,7 @@ input#game-id {
   display: flex;
   font-size: 0.7em;
   font-weight: bold;
-  justify-content: flex-start;
+  justify-content: space-between;
 }
 
 #key-list .crossed {
@@ -232,7 +230,6 @@ input#game-id {
 #key-list .tans { color: #D2B48C; }
 #key-list ul {
   flex: 0 0 auto;
-  margin: 0 1em;
   padding: 0;
   list-style: none;
 }
@@ -256,14 +253,15 @@ input#game-id {
   font-size: 0.9em;
   margin: 1em 0;
   flex: 1 1 auto;
-  max-width: 300px;
+  display: flex;
+  flex-direction: column;
 }
 
 #events .side { color: #9d9d9d; }
 
 #event-log #events {
+  flex: 1 0 auto;
   overflow-y: scroll;
-  height: 20vh;
   padding: 0.5em;
   border: 1px #EEE solid;
 }
@@ -271,34 +269,37 @@ input#game-id {
 #event-log #events div {
   padding: 0.25em 0;
 }
-#chat-form {
-  margin-top: 0.5em;
-}
-#name-change, #side-change {
-  margin: 0.5em 0;
-  font-size: 0.9em;
-}
-#event-log .name, #side-change .side {
+#event-log .name {
   font-weight: bold;
 }
 
-#chat-form input {
-  padding: 0.75em;
-  font-size: 1em;
-  border-radius: 0.5em;
-  border: 1px #BBB solid;
+#chat-form {
+  flex: 0 0 auto;
+  margin-top: 0.5em;
+  display: flex;
 }
 #chat-form button {
+  flex: 0 0 auto;
+}
+#chat-form input {
+  flex: 1 0 auto;
+  padding: 0.75em;
+  font-size: 1em;
+  border-radius: 0.2em;
+  border: 1px #BBB solid;
+  margin-right: 0.5em;
+}
+#chat-form button, #button-row button {
+  font-family: "Exo 2", sans-serif;
   font-size: 0.9em;
-  margin-left: 0.5em;
   background: #b1e773;
   padding: 1em;
   border: none;
-  border-radius: 0.5em;
+  border-radius: 0.2em;
   cursor: pointer;
 }
 
-#chat-form button:hover {
+#chat-form button:hover, #button-row button:hover {
   background: #c3f18d;
 }
 
@@ -315,8 +316,36 @@ input#game-id {
   color: #000;
 }
 #button-row {
-  margin: 1em;
-  max-width: 300px;
+  flex: 0 0 auto;
+  margin: 1em 0;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  font-size: 0.8em;
+}
+
+#button-row div {
+  flex: 0 0 auto;
+  margin: 0 1em 0 0;
+}
+
+#open-settings {
+  font-size: 2em;
+  cursor: pointer;
+}
+#open-settings:hover {
+  color: #709c3e;
+}
+
+.icon-button {
+  cursor: pointer;
+}
+.icon-button:hover {
+  color: #709c3e;
+}
+
+#settings .back-button {
+  font-size: 2em;
 }
 
 @media screen and (max-width: 500px) {
