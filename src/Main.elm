@@ -415,7 +415,7 @@ viewHome id =
 
 viewHeader : Html Msg
 viewHeader =
-    div [ Attr.id "header" ] [ a [ Attr.href "/" ] [ h1 [] [ text "Codenames Green" ] ] ]
+    div [ Attr.id "header" ] [ h1 [] [ a [ Attr.href "/" ] [ text "Codenames Green" ] ] ]
 
 
 
