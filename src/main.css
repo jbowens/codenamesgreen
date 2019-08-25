@@ -379,8 +379,8 @@ input#game-id {
 
 @media (orientation: portrait) {
   #board {
-    width: 100%;
-	grid-auto-rows: 10vh;
+    flex: 0 0 100%;
+    grid-auto-rows: 10vh;
   }
 
   #board .time-token-a, #board .time-token-b {
