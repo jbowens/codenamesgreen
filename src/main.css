@@ -280,7 +280,6 @@ input#game-id {
   overflow-y: scroll;
   padding: 0.5em;
   border: 1px #EEE solid;
-  min-height; 200px;
 }
 
 #event-log #events div {
