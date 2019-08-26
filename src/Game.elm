@@ -407,21 +407,21 @@ viewKeycard model side =
             div [ Attr.id "key-list", onClick (ToggleKeyView ShowKeycard) ]
                 [ ul [ Attr.class "greens" ]
                     (cellsOf Color.Green
-                        |> List.map (\x -> li [ Attr.classList [ ( "crossed", Cell.display x == Cell.ExposedGreen ) ] ] [ text x.word ])
+                        |> List.map (\x -> li [ Attr.classList [ ( "crossed", Cell.isExposedAll x ) ] ] [ text x.word ])
                     )
                 , ul [ Attr.class "blacks" ]
                     (cellsOf Color.Black
-                        |> List.map (\x -> li [ Attr.classList [ ( "crossed", Cell.isExposed side x ) ] ] [ text x.word ])
+                        |> List.map (\x -> li [ Attr.classList [ ( "crossed", Cell.isExposed side x || Cell.isExposedAll x ) ] ] [ text x.word ])
                     )
                 , ul [ Attr.class "tans" ]
                     (cellsOf Color.Tan
                         |> List.take 7
-                        |> List.map (\x -> li [ Attr.classList [ ( "crossed", Cell.isExposed side x ) ] ] [ text x.word ])
+                        |> List.map (\x -> li [ Attr.classList [ ( "crossed", Cell.isExposed side x || Cell.isExposedAll x ) ] ] [ text x.word ])
                     )
                 , ul [ Attr.class "tans" ]
                     (cellsOf Color.Tan
                         |> List.drop 7
-                        |> List.map (\x -> li [ Attr.classList [ ( "crossed", Cell.isExposed side x ) ] ] [ text x.word ])
+                        |> List.map (\x -> li [ Attr.classList [ ( "crossed", Cell.isExposed side x || Cell.isExposedAll x ) ] ] [ text x.word ])
                     )
                 ]
 

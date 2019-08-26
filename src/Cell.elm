@@ -1,4 +1,4 @@
-module Cell exposing (Cell, Display(..), display, isExposed, oppColor, sideColor, tapped, view)
+module Cell exposing (Cell, Display(..), display, isExposed, isExposedAll, oppColor, sideColor, tapped, view)
 
 import Color
 import Html exposing (Html, div, i, text)
@@ -73,6 +73,22 @@ isExposed side cell =
 
         Side.B ->
             Tuple.first cell.b
+
+
+{-| isExposedAll returns True iff the cell
+is already exposed to both players.
+-}
+isExposedAll : Cell -> Bool
+isExposedAll cell =
+    case display cell of
+        ExposedGreen ->
+            True
+
+        ExposedBlack ->
+            True
+
+        Hidden a b ->
+            a && b
 
 
 view : Maybe Side.Side -> (Cell -> a) -> Cell -> Html a
