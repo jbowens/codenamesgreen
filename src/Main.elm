@@ -113,25 +113,26 @@ update msg model =
             stepGameView model game.id (Just game.seed)
 
         ( GameUpdate gameMsg, GameInProgress game chat gameView ) ->
-            let
-                ( newGame, gameCmd ) =
-                    Game.update gameMsg game
-            in
-            ( { model | page = GameInProgress newGame chat gameView }, Cmd.map GameUpdate gameCmd )
+            case Game.update gameMsg game GameUpdate of
+                Just ( newGame, gameCmd ) ->
+                    ( { model | page = GameInProgress newGame chat gameView }, gameCmd )
+
+                Nothing ->
+                    stepGameView model game.id Nothing
 
         ( GotGame (Ok state), GameInProgress old chat _ ) ->
             let
                 ( gameModel, gameCmd ) =
-                    Game.init state model.user model.apiClient
+                    Game.init state model.user model.apiClient GameUpdate
             in
-            ( { model | page = GameInProgress gameModel chat ShowDefault }, Cmd.map GameUpdate gameCmd )
+            ( { model | page = GameInProgress gameModel chat ShowDefault }, gameCmd )
 
         ( GotGame (Ok state), GameLoading id ) ->
             let
                 ( gameModel, gameCmd ) =
-                    Game.init state model.user model.apiClient
+                    Game.init state model.user model.apiClient GameUpdate
             in
-            ( { model | page = GameInProgress gameModel "" ShowDefault }, Cmd.map GameUpdate gameCmd )
+            ( { model | page = GameInProgress gameModel "" ShowDefault }, gameCmd )
 
         ( PickSide side, GameInProgress oldGame chat gameView ) ->
             let
@@ -144,9 +145,10 @@ update msg model =
             ( { model | page = GameInProgress game chat gameView }
             , Api.ping
                 -- Pinging will immediately record the change on the
-                -- serverside, without having to wait for the long
+                -- server, without having to wait for the long
                 -- poll to make a new request.
                 { gameId = game.id
+                , seed = game.seed
                 , player = game.player
                 , toMsg = always NoOp
                 , client = model.apiClient
@@ -160,6 +162,7 @@ update msg model =
             ( { model | page = GameInProgress g "" gameView }
             , Api.chat
                 { gameId = g.id
+                , seed = g.seed
                 , player = g.player
                 , toMsg = always NoOp
                 , message = message

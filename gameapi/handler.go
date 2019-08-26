@@ -93,6 +93,10 @@ func (h *handler) handleNewGame(rw http.ResponseWriter, req *http.Request) {
 	// the existing game's seed so a delayed request doesn't reset an
 	// existing game.
 	oldGame, ok := h.games[body.GameID]
+	if ok {
+		oldGame.mu.Lock()
+		defer oldGame.mu.Unlock()
+	}
 	if ok && (body.PrevSeed == nil || *body.PrevSeed != oldGame.Seed) {
 		writeJSON(rw, oldGame)
 		return
@@ -115,6 +119,9 @@ func (h *handler) handleNewGame(rw http.ResponseWriter, req *http.Request) {
 		for id, p := range oldGame.players {
 			game.players[id] = Player{LastSeen: p.LastSeen}
 		}
+
+		// Wake up any clients waiting on this game.
+		oldGame.notifyAll()
 	}
 
 	g := &game
@@ -127,6 +134,7 @@ func (h *handler) handleNewGame(rw http.ResponseWriter, req *http.Request) {
 func (h *handler) handleGuess(rw http.ResponseWriter, req *http.Request) {
 	var body struct {
 		GameID    string `json:"game_id"`
+		Seed      Seed   `json:"seed"`
 		PlayerID  string `json:"player_id"`
 		Name      string `json:"name"`
 		Team      int    `json:"team"`
@@ -141,23 +149,30 @@ func (h *handler) handleGuess(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	h.mu.Lock()
-	defer h.mu.Unlock()
 	g, ok := h.games[body.GameID]
+	h.mu.Unlock()
 	if !ok {
 		writeError(rw, "not_found", "Game not found", 404)
 		return
 	}
 
-	g.guess(body.PlayerID, body.Name, body.Team, body.Index, time.Now())
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if body.Seed != g.Seed {
+		writeError(rw, "bad_seed", "Request intended for a different game seed.", 400)
+		return
+	}
 
-	evts, _ := g.eventsSince(body.LastEvent)
-	writeJSON(rw, GameUpdate{Seed: g.Seed, Events: evts})
+	g.markSeen(body.PlayerID, body.Name, body.Team, time.Now())
+	g.guess(body.PlayerID, body.Name, body.Team, body.Index, time.Now())
+	writeJSON(rw, map[string]string{"status": "ok"})
 }
 
 // POST /chat
 func (h *handler) handleChat(rw http.ResponseWriter, req *http.Request) {
 	var body struct {
 		GameID   string `json:"game_id"`
+		Seed     Seed   `json:"seed"`
 		PlayerID string `json:"player_id"`
 		Name     string `json:"name"`
 		Team     int    `json:"team"`
@@ -171,15 +186,21 @@ func (h *handler) handleChat(rw http.ResponseWriter, req *http.Request) {
 	}
 
 	h.mu.Lock()
-	defer h.mu.Unlock()
 	g, ok := h.games[body.GameID]
+	h.mu.Unlock()
 	if !ok {
 		writeError(rw, "not_found", "Game not found", 404)
 		return
 	}
 
-	g.markSeen(body.PlayerID, body.Name, body.Team, time.Now())
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if body.Seed != g.Seed {
+		writeError(rw, "bad_seed", "Request intended for a different game seed.", 400)
+		return
+	}
 
+	g.markSeen(body.PlayerID, body.Name, body.Team, time.Now())
 	g.addEvent(Event{
 		Type:     "chat",
 		Team:     body.Team,
@@ -194,6 +215,7 @@ func (h *handler) handleChat(rw http.ResponseWriter, req *http.Request) {
 func (h *handler) handleEvents(rw http.ResponseWriter, req *http.Request) {
 	var body struct {
 		GameID    string `json:"game_id"`
+		Seed      Seed   `json:"seed"`
 		PlayerID  string `json:"player_id"`
 		Name      string `json:"name"`
 		Team      int    `json:"team"`
@@ -214,11 +236,24 @@ func (h *handler) handleEvents(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	g.mu.Lock()
+	seed := g.Seed
+	if body.Seed != seed {
+		evts, _ := g.eventsSince(body.LastEvent)
+		g.mu.Unlock()
+		writeJSON(rw, GameUpdate{Seed: seed, Events: evts})
+		return
+	}
 	g.markSeen(body.PlayerID, body.Name, body.Team, time.Now())
 
 	evts, ch := g.eventsSince(body.LastEvent)
+
+	// Release the mutex.
+	// We reacquire it when we reretrieve the game.
+	g.mu.Unlock()
+
 	if len(evts) > 0 {
-		writeJSON(rw, GameUpdate{Seed: g.Seed, Events: evts})
+		writeJSON(rw, GameUpdate{Seed: seed, Events: evts})
 		return
 	}
 
@@ -226,7 +261,19 @@ func (h *handler) handleEvents(rw http.ResponseWriter, req *http.Request) {
 	// gives up, or we time out.
 	select {
 	case <-ch:
+		// re-retrieve the game in case it was replaced
+		// while we were waiting for events.
+		h.mu.Lock()
+		g, ok := h.games[body.GameID]
+		h.mu.Unlock()
+		if !ok {
+			writeError(rw, "not_found", "Game not found", 404)
+			return
+		}
+		g.mu.Lock()
 		evts, _ = g.eventsSince(body.LastEvent)
+		seed = g.Seed
+		g.mu.Unlock()
 
 	case <-req.Context().Done():
 	case <-time.After(25 * time.Second):
@@ -242,6 +289,7 @@ func (h *handler) handleEvents(rw http.ResponseWriter, req *http.Request) {
 func (h *handler) handlePing(rw http.ResponseWriter, req *http.Request) {
 	var body struct {
 		GameID   string `json:"game_id"`
+		Seed     Seed   `json:"seed"`
 		PlayerID string `json:"player_id"`
 		Name     string `json:"name"`
 		Team     int    `json:"team"`
@@ -258,6 +306,10 @@ func (h *handler) handlePing(rw http.ResponseWriter, req *http.Request) {
 	h.mu.Unlock()
 	if !ok {
 		writeError(rw, "not_found", "Game not found", 404)
+		return
+	}
+	if body.Seed != g.Seed {
+		writeError(rw, "bad_seed", "Request intended for a different game seed.", 400)
 		return
 	}
 

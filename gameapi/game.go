@@ -97,13 +97,12 @@ type Game struct {
 	TwoLayout []Color   `json:"two_layout"`
 }
 
-func (gs *GameState) addEvent(evt Event) {
-	gs.mu.Lock()
-	defer gs.mu.Unlock()
-	gs.addEventLocked(evt)
+func (gs *GameState) notifyAll() {
+	close(gs.changed)
+	gs.changed = make(chan struct{})
 }
 
-func (gs *GameState) addEventLocked(evt Event) {
+func (gs *GameState) addEvent(evt Event) {
 	evt.Number = len(gs.Events) + 1
 	gs.Events = append(gs.Events, evt)
 
@@ -114,9 +113,6 @@ func (gs *GameState) addEventLocked(evt Event) {
 }
 
 func (gs *GameState) eventsSince(lastSeen int) (evts []Event, next chan struct{}) {
-	gs.mu.Lock()
-	defer gs.mu.Unlock()
-
 	evts = []Event{}
 	for _, e := range gs.Events {
 		if e.Number > lastSeen {
@@ -127,24 +123,21 @@ func (gs *GameState) eventsSince(lastSeen int) (evts []Event, next chan struct{}
 }
 
 func (g *Game) markSeen(playerID, name string, team int, when time.Time) {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
 	p, ok := g.players[playerID]
 	if ok {
 		p.LastSeen = when
 		if team != 0 && p.Team != team {
 			p.Team = team
-			g.addEventLocked(Event{
+			g.addEvent(Event{
 				Type:     "join_side",
 				PlayerID: playerID,
 				Name:     name,
 				Team:     team,
 			})
 		}
-		if name != p.Name {
+		if name != p.Name && p.Name != "" {
 			p.Name = name
-			g.addEventLocked(Event{
+			g.addEvent(Event{
 				Type:     "change_name",
 				PlayerID: playerID,
 				Name:     name,
@@ -157,7 +150,7 @@ func (g *Game) markSeen(playerID, name string, team int, when time.Time) {
 
 	g.players[playerID] = Player{Team: team, Name: name, LastSeen: when}
 	if team != 0 {
-		g.addEventLocked(Event{
+		g.addEvent(Event{
 			Type:     "join_side",
 			PlayerID: playerID,
 			Name:     name,
@@ -169,9 +162,6 @@ func (g *Game) markSeen(playerID, name string, team int, when time.Time) {
 func (g *Game) guess(playerID, name string, team, index int, when time.Time) {
 	g.markSeen(playerID, name, team, when)
 
-	g.mu.Lock()
-	defer g.mu.Unlock()
-
 	// If there's an existing, identical guess event then ignore
 	// this guess. Duplicate events may happen if multiple players
 	// tap at approximately the same moment.
@@ -181,7 +171,7 @@ func (g *Game) guess(playerID, name string, team, index int, when time.Time) {
 		}
 	}
 
-	g.addEventLocked(Event{
+	g.addEvent(Event{
 		Type:     "guess",
 		Team:     team,
 		Index:    index,
@@ -198,7 +188,7 @@ func (g *Game) pruneOldPlayers(now time.Time) (remaining int) {
 		if player.LastSeen.Add(50 * time.Second).Before(now) {
 			delete(g.players, id)
 			if player.Team != 0 {
-				g.addEventLocked(Event{
+				g.addEvent(Event{
 					Type:     "player_left",
 					PlayerID: id,
 					Name:     player.Name,

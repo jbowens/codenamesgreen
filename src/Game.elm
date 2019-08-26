@@ -20,8 +20,8 @@ import Task
 import User exposing (User)
 
 
-init : Api.GameState -> User -> Api.Client -> ( Model, Cmd Msg )
-init state user client =
+init : Api.GameState -> User -> Api.Client -> (Msg -> msg) -> ( Model, Cmd msg )
+init state user client toMsg =
     let
         model =
             List.foldl applyEvent
@@ -50,7 +50,7 @@ init state user client =
         modelWithPlayer =
             { model | player = player }
     in
-    ( modelWithPlayer, Cmd.batch [ longPollEvents modelWithPlayer, jumpToBottom "events" ] )
+    ( modelWithPlayer, Cmd.batch [ longPollEvents modelWithPlayer toMsg, jumpToBottom "events" toMsg ] )
 
 
 
@@ -141,11 +141,11 @@ type Msg
     | ToggleKeyView KeyView
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update : Msg -> Model -> (Msg -> msg) -> Maybe ( Model, Cmd msg )
+update msg model toMsg =
     case msg of
         NoOp ->
-            ( model, Cmd.none )
+            Just ( model, Cmd.none )
 
         LongPoll id seed result ->
             case ( id == model.id && seed == model.seed, result ) of
@@ -153,70 +153,73 @@ update msg model =
                     -- We might get the result of a long poll from a previous
                     -- game we were playing, in which case we just want to
                     -- ignore it.
-                    ( model, Cmd.none )
+                    Just ( model, Cmd.none )
 
                 ( True, Err e ) ->
                     -- Even if the long poll request failed for some reason,
                     -- we want to trigger a new request anyways. The failure
                     -- could be short-lived.
-                    ( model, longPollEvents model )
+                    -- TODO: add exponential backoff
+                    Just ( model, longPollEvents model toMsg )
 
                 ( True, Ok up ) ->
-                    let
-                        ( m, cmd ) =
-                            applyUpdate model up
-                    in
-                    ( m, Cmd.batch [ cmd, longPollEvents m ] )
+                    applyUpdate model up toMsg
+                        |> Maybe.map (\( m, cmd ) -> ( m, Cmd.batch [ cmd, longPollEvents m toMsg ] ))
 
         GameUpdate (Ok up) ->
-            applyUpdate model up
+            applyUpdate model up toMsg
 
         GameUpdate (Err err) ->
             -- TODO: flash an error message?
-            ( model, Cmd.none )
+            Just ( model, Cmd.none )
 
         ToggleKeyView newSetting ->
-            ( { model | keyView = newSetting }, Cmd.none )
+            Just ( { model | keyView = newSetting }, Cmd.none )
 
         WordPicked cell ->
             case model.player.side of
                 Nothing ->
-                    ( model, Cmd.none )
+                    Just ( model, Cmd.none )
 
                 Just side ->
-                    ( model
-                    , if not (Cell.isExposed (Side.opposite side) cell) then
-                        Api.submitGuess
-                            { gameId = model.id
-                            , player = model.player
-                            , index = cell.index
-                            , lastEventId = lastEvent model
-                            , toMsg = GameUpdate
-                            , client = model.client
-                            }
+                    Just
+                        ( model
+                        , if not (Cell.isExposed (Side.opposite side) cell) then
+                            Api.submitGuess
+                                { gameId = model.id
+                                , seed = model.seed
+                                , player = model.player
+                                , index = cell.index
+                                , lastEventId = lastEvent model
+                                , toMsg = \x -> toMsg (GameUpdate x)
+                                , client = model.client
+                                }
 
-                      else
-                        Cmd.none
-                    )
+                          else
+                            Cmd.none
+                        )
 
 
-applyUpdate : Model -> Update -> ( Model, Cmd Msg )
-applyUpdate model up =
+applyUpdate : Model -> Update -> (Msg -> msg) -> Maybe ( Model, Cmd msg )
+applyUpdate model up toMsg =
     if up.seed /= model.seed then
-        ( model, Cmd.none )
+        -- If the seed doesn't match, the previous game was destroyed
+        -- and replaced with a new game.
+        Nothing
 
     else
         let
             newModel =
                 List.foldl applyEvent model up.events
         in
-        ( newModel
-        , if lastEvent newModel > lastEvent model then
-            jumpToBottom "events"
+        Just
+            ( newModel
+            , if lastEvent newModel > lastEvent model then
+                jumpToBottom "events" toMsg
 
-          else
-            Cmd.none
-        )
+              else
+                Cmd.none
+            )
 
 
 applyEvent : Event -> Model -> Model
@@ -275,13 +278,15 @@ applyGuess e cell side model =
     }
 
 
-longPollEvents : Model -> Cmd Msg
-longPollEvents m =
+longPollEvents : Model -> (Msg -> msg) -> Cmd msg
+longPollEvents m toMsg =
     Api.longPollEvents
         { gameId = m.id
+        , seed = m.seed
         , player = m.player
         , lastEventId = lastEvent m
-        , toMsg = LongPoll m.id m.seed
+        , tracker = m.id ++ m.seed
+        , toMsg = \x -> toMsg (LongPoll m.id m.seed x)
         , client = m.client
         }
 
@@ -290,11 +295,11 @@ longPollEvents m =
 ------ VIEW ------
 
 
-jumpToBottom : String -> Cmd Msg
-jumpToBottom id =
+jumpToBottom : String -> (Msg -> msg) -> Cmd msg
+jumpToBottom id toMsg =
     Dom.getViewportOf id
         |> Task.andThen (\info -> Dom.setViewportOf id 0 info.scene.height)
-        |> Task.attempt (always NoOp)
+        |> Task.attempt (always (toMsg NoOp))
 
 
 viewStatus : Model -> Html a

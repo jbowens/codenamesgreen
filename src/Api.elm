@@ -67,6 +67,7 @@ endpointUrl baseUrl path =
 
 submitGuess :
     { gameId : String
+    , seed : String
     , player : Player
     , index : Int
     , lastEventId : Int
@@ -81,6 +82,7 @@ submitGuess r =
             Http.jsonBody
                 (E.object
                     [ ( "game_id", E.string r.gameId )
+                    , ( "seed", E.string r.seed )
                     , ( "index", E.int r.index )
                     , ( "player_id", E.string r.player.id )
                     , ( "name", E.string r.player.name )
@@ -94,6 +96,7 @@ submitGuess r =
 
 ping :
     { gameId : String
+    , seed : String
     , player : Player
     , toMsg : Result Http.Error () -> msg
     , client : Client
@@ -106,6 +109,7 @@ ping r =
             Http.jsonBody
                 (E.object
                     [ ( "game_id", E.string r.gameId )
+                    , ( "seed", E.string r.seed )
                     , ( "player_id", E.string r.player.id )
                     , ( "name", E.string r.player.name )
                     , ( "team", Side.encodeMaybe r.player.side )
@@ -117,6 +121,7 @@ ping r =
 
 chat :
     { gameId : String
+    , seed : String
     , player : Player
     , toMsg : Result Http.Error () -> msg
     , message : String
@@ -130,6 +135,7 @@ chat r =
             Http.jsonBody
                 (E.object
                     [ ( "game_id", E.string r.gameId )
+                    , ( "seed", E.string r.seed )
                     , ( "player_id", E.string r.player.id )
                     , ( "name", E.string r.player.name )
                     , ( "team", Side.encodeMaybe r.player.side )
@@ -142,8 +148,10 @@ chat r =
 
 longPollEvents :
     { gameId : String
+    , seed : String
     , player : Player
     , lastEventId : Int
+    , tracker : String
     , toMsg : Result Http.Error Update -> msg
     , client : Client
     }
@@ -157,6 +165,7 @@ longPollEvents r =
             Http.jsonBody
                 (E.object
                     [ ( "game_id", E.string r.gameId )
+                    , ( "seed", E.string r.seed )
                     , ( "player_id", E.string r.player.id )
                     , ( "name", E.string r.player.name )
                     , ( "team", Side.encodeMaybe r.player.side )
@@ -165,7 +174,7 @@ longPollEvents r =
                 )
         , expect = Http.expectJson r.toMsg decodeUpdate
         , timeout = Just 45000
-        , tracker = Nothing
+        , tracker = Just r.tracker
         }
 
 
