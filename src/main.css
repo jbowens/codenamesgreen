@@ -106,7 +106,6 @@ input#game-id {
   display: flex;
   flex-direction: row;
   flex: auto;
-  flex-wrap: wrap;
 }
 
 #status {
@@ -190,9 +189,13 @@ input#game-id {
   flex: auto;
   display: flex;
   flex-direction: column;
-  margin: 0 1%;
+  margin: 1%;
   min-height: 0;
   max-height: 100%;
+}
+
+#join-a-team {
+  flex: 1;
 }
 
 #join-a-team .buttons {
@@ -391,6 +394,10 @@ input#game-id {
 }
 
 @media (orientation: portrait) {
+  #game {
+    flex-wrap: wrap;
+  }
+
   #board {
     flex: none;
     width: 100%;
@@ -401,7 +408,6 @@ input#game-id {
   }
   #board .time-token-a { left: 0.5vh; }
   #board .time-token-b { left: 2.5vh; }
-
 
   #sidebar {
     flex-direction: row;
