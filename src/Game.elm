@@ -429,12 +429,14 @@ viewKeycard model side =
             div [ Attr.id "key-card", onClick (ToggleKeyView ShowWords) ]
                 (model.cells
                     |> Array.toList
-                    |> List.map (Cell.sideColor side)
                     |> List.map
                         (\c ->
                             div
-                                [ Attr.class "cell"
-                                , Attr.class (Color.toString c)
+                                [ Attr.classList
+                                    [ ( "cell", True )
+                                    , ( Color.toString <| Cell.sideColor side <| c, True )
+                                    , ( "crossed", Cell.isExposed side c || Cell.isExposedAll c )
+                                    ]
                                 ]
                                 []
                         )

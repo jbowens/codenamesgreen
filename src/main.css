@@ -232,6 +232,8 @@ input#game-id {
   max-width: 16em;
 }
 
+
+
 #key-list {
   display: flex;
   font-size: 0.7em;
@@ -264,6 +266,9 @@ input#game-id {
 }
 #key-card .green {
   background: #82b34a;
+}
+#key-card .crossed.green {
+  background: linear-gradient(to top right, #82b34a calc(50% - 2px), #000, #82b34a calc(50% + 1px) );
 }
 
 #event-log {
