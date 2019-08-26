@@ -137,7 +137,6 @@ input#game-id {
   grid-template-columns: repeat(5, 1fr);
   grid-auto-rows: 18vh;
   grid-gap: 0.5vw;
-  max-width: 800px;
 }
 
 #board .cell {
@@ -191,7 +190,7 @@ input#game-id {
   flex: auto;
   display: flex;
   flex-direction: column;
-  padding: 0 1%;
+  margin: 0 1%;
   min-height: 0;
   max-height: 100%;
 }
@@ -223,6 +222,7 @@ input#game-id {
 #key-card, #key-list {
   flex: none;
   cursor: pointer;
+  margin: 1em;
 }
 
 #key-card {
@@ -380,14 +380,17 @@ input#game-id {
   #sidebar {
     max-width: 400px;
   }
+  #board {
+    max-width: 800px;
+  }
 }
 
 @media (orientation: portrait) {
   #board {
-    flex: 0 0 100%;
-    grid-auto-rows: 10vh;
+    flex: none;
+    width: 100%;
+    grid-auto-rows: auto;
   }
-
   #board .time-token-a, #board .time-token-b {
     font-size: 2vh;
   }
@@ -397,17 +400,30 @@ input#game-id {
 
   #sidebar {
     flex-direction: row;
-    flex: 0 0 100%;
-    padding: 0;
+    flex-wrap: wrap;
     min-height: 0;
   }
+  #key-card .cell { min-width: 5vw; }
 
-  #key-card, #key-list {
-	flex: 2 1 40vw
+  #status {
+    order: 1;
+    flex: 4;
+    min-width: 60%;
   }
-
-  #status { order: 2; }
-  #button-row { order: 3; }
-  #key-card, #key-list { order: 1; }
-  #event-log { order: 4; }
+  #button-row {
+    flex: none;
+    order: 2;
+  }
+  #button-row::after {
+    width: 100%;
+    height: 0;
+  }
+  #key-card, #key-list {
+    order: 3;
+	flex: 5;
+  }
+  #event-log {
+    order: 4;
+    flex: 5;
+  }
 }
