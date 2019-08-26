@@ -278,7 +278,7 @@ func (h *handler) handleEvents(rw http.ResponseWriter, req *http.Request) {
 	case <-req.Context().Done():
 	case <-time.After(25 * time.Second):
 	}
-	writeJSON(rw, GameUpdate{Seed: g.Seed, Events: evts})
+	writeJSON(rw, GameUpdate{Seed: seed, Events: evts})
 }
 
 // POST /ping
