@@ -15,7 +15,7 @@ sessions.
 
 -}
 type alias User =
-    { playerId : String
+    { id : String
     , name : String
     }
 
@@ -36,7 +36,7 @@ decode value =
 encode : User -> E.Value
 encode user =
     E.object
-        [ ( "player_id", E.string user.playerId )
+        [ ( "player_id", E.string user.id )
         , ( "name", E.string user.name )
         ]
 

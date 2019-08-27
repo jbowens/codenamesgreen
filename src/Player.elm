@@ -1,10 +1,10 @@
 module Player exposing (Player)
 
 import Side
+import User
 
 
 type alias Player =
-    { id : String
-    , name : String
+    { user : User.User
     , side : Maybe Side.Side
     }

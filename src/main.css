@@ -130,11 +130,10 @@ input#game-id {
 }
 
 #board {
-  flex: 0 0 65%;
+  flex: 0 0 50%;
   font-size: 0.9em;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  grid-auto-rows: 18vh;
   grid-gap: 0.5vw;
 }
 
@@ -222,10 +221,16 @@ input#game-id {
   display: block;
 }
 
-#key-card, #key-list {
+#key {
   flex: none;
-  cursor: pointer;
+  display: flex;
+  justify-content: space-around;
   margin: 1em;
+}
+
+#key-card, #key-list {
+  flex: auto;
+  cursor: pointer;
 }
 
 #key-card {
@@ -235,11 +240,9 @@ input#game-id {
   max-width: 16em;
 }
 
-
-
 #key-list {
   display: flex;
-  font-size: 0.7em;
+  font-size: 0.9em;
   font-weight: bold;
   justify-content: space-between;
 }
@@ -254,6 +257,7 @@ input#game-id {
   flex: 0 0 auto;
   padding: 0;
   list-style: none;
+  margin: 0.5em;
 }
 
 #key-card .cell {
@@ -372,6 +376,18 @@ input#game-id {
   font-size: 2em;
 }
 
+#settings .setting {
+  margin: 2em 1em;
+}
+#settings label {
+  display: block;
+  font-size: 0.9em;
+}
+#settings input {
+  margin: 1em;
+  font-size: 1.1em;
+}
+
 @media screen and (max-width: 500px) {
   body {
     font-size: 0.8em;
@@ -386,21 +402,28 @@ input#game-id {
 
 @media (orientation: landscape) {
   #sidebar {
-    max-width: 400px;
+    max-width: 500px;
   }
   #board {
     max-width: 800px;
   }
 }
+@media (orientation: landscape) and (max-width: 1000px) {
+  #key-list { font-size: 0.8em; }
+}
+@media (orientation: landscape) and (max-width: 800px) {
+  #board { font-size: 0.8em; }
+}
 
 @media (orientation: portrait) {
   #game {
-    flex-wrap: wrap;
+    flex-direction: column;
   }
 
   #board {
     flex: none;
     width: 100%;
+    height: 45%;
     grid-auto-rows: auto;
   }
   #board .time-token-a, #board .time-token-b {
@@ -410,31 +433,34 @@ input#game-id {
   #board .time-token-b { left: 2.5vh; }
 
   #sidebar {
-    flex-direction: row;
-    flex-wrap: wrap;
-    min-height: 0;
+    flex: auto;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 9fr;
   }
-  #key-card .cell { min-width: 5vw; }
+  #key-list {
+    flex-wrap: wrap;
+  }
 
   #status {
     order: 1;
-    flex: 4;
     min-width: 60%;
   }
   #button-row {
-    flex: none;
     order: 2;
+    justify-content: flex-end;
   }
-  #button-row::after {
-    width: 100%;
-    height: 0;
-  }
-  #key-card, #key-list {
+  #key {
     order: 3;
-	flex: 5;
+    margin: 1em 1em 1em 0;
+  }
+  #key-card {
+    max-height: 25vh;
   }
   #event-log {
     order: 4;
-    flex: 5;
   }
+}
+@media (orientation: portrait) and (max-width: 400px) {
+  #key-list { font-size: 0.8em; }
 }

@@ -84,8 +84,8 @@ submitGuess r =
                     [ ( "game_id", E.string r.gameId )
                     , ( "seed", E.string r.seed )
                     , ( "index", E.int r.index )
-                    , ( "player_id", E.string r.player.id )
-                    , ( "name", E.string r.player.name )
+                    , ( "player_id", E.string r.player.user.id )
+                    , ( "name", E.string r.player.user.name )
                     , ( "team", Side.encodeMaybe r.player.side )
                     , ( "last_event", E.int r.lastEventId )
                     ]
@@ -110,8 +110,8 @@ ping r =
                 (E.object
                     [ ( "game_id", E.string r.gameId )
                     , ( "seed", E.string r.seed )
-                    , ( "player_id", E.string r.player.id )
-                    , ( "name", E.string r.player.name )
+                    , ( "player_id", E.string r.player.user.id )
+                    , ( "name", E.string r.player.user.name )
                     , ( "team", Side.encodeMaybe r.player.side )
                     ]
                 )
@@ -136,8 +136,8 @@ chat r =
                 (E.object
                     [ ( "game_id", E.string r.gameId )
                     , ( "seed", E.string r.seed )
-                    , ( "player_id", E.string r.player.id )
-                    , ( "name", E.string r.player.name )
+                    , ( "player_id", E.string r.player.user.id )
+                    , ( "name", E.string r.player.user.name )
                     , ( "team", Side.encodeMaybe r.player.side )
                     , ( "message", E.string r.message )
                     ]
@@ -166,8 +166,8 @@ longPollEvents r =
                 (E.object
                     [ ( "game_id", E.string r.gameId )
                     , ( "seed", E.string r.seed )
-                    , ( "player_id", E.string r.player.id )
-                    , ( "name", E.string r.player.name )
+                    , ( "player_id", E.string r.player.user.id )
+                    , ( "name", E.string r.player.user.name )
                     , ( "team", Side.encodeMaybe r.player.side )
                     , ( "last_event", E.int r.lastEventId )
                     ]

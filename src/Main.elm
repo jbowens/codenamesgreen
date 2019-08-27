@@ -5,9 +5,9 @@ import Browser
 import Browser.Navigation as Nav
 import Dict
 import Game
-import Html exposing (Html, a, button, div, form, h1, h2, h3, i, input, p, span, strong, text)
+import Html exposing (Html, a, button, div, form, h1, h2, h3, i, input, label, p, span, strong, text)
 import Html.Attributes as Attr
-import Html.Events exposing (onClick, onInput, onSubmit)
+import Html.Events exposing (onBlur, onClick, onInput, onSubmit)
 import Html.Lazy exposing (lazy, lazy2, lazy3)
 import Http
 import Json.Decode
@@ -42,7 +42,11 @@ type Page
 
 type GameView
     = ShowDefault
-    | ShowSettings
+    | ShowSettings Settings
+
+
+type alias Settings =
+    { name : String }
 
 
 init : Json.Decode.Value -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -82,7 +86,9 @@ type Msg
     | GotGame (Result Http.Error Api.GameState)
     | ChatMessageChanged String
     | SendChat
-    | ToggleSettings GameView
+    | ToggleSettings
+    | SettingsEdit (Settings -> Settings)
+    | SaveSettings Settings
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -170,8 +176,16 @@ update msg model =
                 }
             )
 
-        ( ToggleSettings gameView, GameInProgress g message _ ) ->
-            ( { model | page = GameInProgress g message gameView }, Cmd.none )
+        ( ToggleSettings, GameInProgress g message gameView ) ->
+            case gameView of
+                ShowSettings _ ->
+                    ( { model | page = GameInProgress g message ShowDefault }, Cmd.none )
+
+                ShowDefault ->
+                    ( { model | page = GameInProgress g message (ShowSettings { name = g.player.user.name }) }, Cmd.none )
+
+        ( SettingsEdit editSetting, GameInProgress g message (ShowSettings settings) ) ->
+            ( { model | page = GameInProgress g message (ShowSettings (editSetting settings)) }, Cmd.none )
 
         ( GotGame (Err e), _ ) ->
             -- TODO: display an error message
@@ -315,22 +329,31 @@ viewSidebar g chatMessage gameView =
         ( Nothing, _ ) ->
             [ viewJoinASide playersOnSideA playersOnSideB ]
 
-        ( _, ShowSettings ) ->
-            viewSettings g
+        ( _, ShowSettings settings ) ->
+            viewSettings g settings
 
         ( Just side, ShowDefault ) ->
             viewActiveSidebar g side chatMessage
 
 
-viewSettings : Game.Model -> List (Html Msg)
-viewSettings g =
+viewSettings : Game.Model -> Settings -> List (Html Msg)
+viewSettings g settings =
     [ div [ Attr.id "settings" ]
         [ div []
             [ i
                 [ Attr.class "icon ion-ios-arrow-back icon-button back-button"
-                , onClick (ToggleSettings ShowDefault)
+                , onClick ToggleSettings
                 ]
                 []
+            , div [ Attr.class "setting" ]
+                [ label [ Attr.for "settings-player-name" ] [ text "Your name" ]
+                , input
+                    [ Attr.value settings.name
+                    , onInput (\x -> SettingsEdit (\s -> { s | name = x }))
+                    , onBlur (SaveSettings settings)
+                    ]
+                    []
+                ]
             ]
         ]
     ]
@@ -360,7 +383,7 @@ viewButtonRow : Html Msg
 viewButtonRow =
     div [ Attr.id "button-row" ]
         [ div [] [ button [ onClick NextGame ] [ text "Next game" ] ]
-        , div [] [ i [ Attr.id "open-settings", Attr.class "icon icon-button ion-ios-settings", onClick (ToggleSettings ShowSettings) ] [] ]
+        , div [] [ i [ Attr.id "open-settings", Attr.class "icon icon-button ion-ios-settings", onClick ToggleSettings ] [] ]
         ]
 
 

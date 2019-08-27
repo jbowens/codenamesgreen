@@ -36,7 +36,7 @@ init state user client toMsg =
                         state.twoLayout
                         |> List.indexedMap (\i ( w, ( e1, l1 ), ( e2, l2 ) ) -> Cell i w ( e1, l1 ) ( e2, l2 ))
                         |> Array.fromList
-                , player = { id = user.playerId, name = user.name, side = Nothing }
+                , player = { user = user, side = Nothing }
                 , turn = Nothing
                 , tokensConsumed = 0
                 , client = client
@@ -45,7 +45,7 @@ init state user client toMsg =
                 state.events
 
         player =
-            { id = user.playerId, name = user.name, side = Dict.get user.playerId model.players }
+            { user = user, side = Dict.get user.id model.players }
 
         modelWithPlayer =
             { model | player = player }
@@ -395,49 +395,51 @@ viewEvent model e =
 
 viewKeycard : Model -> Side -> Html Msg
 viewKeycard model side =
-    case model.keyView of
-        ShowWords ->
-            let
-                cells =
-                    Array.toList model.cells
+    div [ Attr.id "key" ]
+        [ case model.keyView of
+            ShowWords ->
+                let
+                    cells =
+                        Array.toList model.cells
 
-                cellsOf =
-                    \color -> List.filter (\c -> Cell.sideColor side c == color) cells
-            in
-            div [ Attr.id "key-list", onClick (ToggleKeyView ShowKeycard) ]
-                [ ul [ Attr.class "greens" ]
-                    (cellsOf Color.Green
-                        |> List.map (\x -> li [ Attr.classList [ ( "crossed", Cell.isExposedAll x ) ] ] [ text x.word ])
-                    )
-                , ul [ Attr.class "blacks" ]
-                    (cellsOf Color.Black
-                        |> List.map (\x -> li [ Attr.classList [ ( "crossed", Cell.isExposed side x || Cell.isExposedAll x ) ] ] [ text x.word ])
-                    )
-                , ul [ Attr.class "tans" ]
-                    (cellsOf Color.Tan
-                        |> List.take 7
-                        |> List.map (\x -> li [ Attr.classList [ ( "crossed", Cell.isExposed side x || Cell.isExposedAll x ) ] ] [ text x.word ])
-                    )
-                , ul [ Attr.class "tans" ]
-                    (cellsOf Color.Tan
-                        |> List.drop 7
-                        |> List.map (\x -> li [ Attr.classList [ ( "crossed", Cell.isExposed side x || Cell.isExposedAll x ) ] ] [ text x.word ])
-                    )
-                ]
-
-        ShowKeycard ->
-            div [ Attr.id "key-card", onClick (ToggleKeyView ShowWords) ]
-                (model.cells
-                    |> Array.toList
-                    |> List.map
-                        (\c ->
-                            div
-                                [ Attr.classList
-                                    [ ( "cell", True )
-                                    , ( Color.toString <| Cell.sideColor side <| c, True )
-                                    , ( "crossed", Cell.isExposed side c || Cell.isExposedAll c )
-                                    ]
-                                ]
-                                []
+                    cellsOf =
+                        \color -> List.filter (\c -> Cell.sideColor side c == color) cells
+                in
+                div [ Attr.id "key-list", onClick (ToggleKeyView ShowKeycard) ]
+                    [ ul [ Attr.class "greens" ]
+                        (cellsOf Color.Green
+                            |> List.map (\x -> li [ Attr.classList [ ( "crossed", Cell.isExposedAll x ) ] ] [ text x.word ])
                         )
-                )
+                    , ul [ Attr.class "blacks" ]
+                        (cellsOf Color.Black
+                            |> List.map (\x -> li [ Attr.classList [ ( "crossed", Cell.isExposed side x || Cell.isExposedAll x ) ] ] [ text x.word ])
+                        )
+                    , ul [ Attr.class "tans" ]
+                        (cellsOf Color.Tan
+                            |> List.take 7
+                            |> List.map (\x -> li [ Attr.classList [ ( "crossed", Cell.isExposed side x || Cell.isExposedAll x ) ] ] [ text x.word ])
+                        )
+                    , ul [ Attr.class "tans" ]
+                        (cellsOf Color.Tan
+                            |> List.drop 7
+                            |> List.map (\x -> li [ Attr.classList [ ( "crossed", Cell.isExposed side x || Cell.isExposedAll x ) ] ] [ text x.word ])
+                        )
+                    ]
+
+            ShowKeycard ->
+                div [ Attr.id "key-card", onClick (ToggleKeyView ShowWords) ]
+                    (model.cells
+                        |> Array.toList
+                        |> List.map
+                            (\c ->
+                                div
+                                    [ Attr.classList
+                                        [ ( "cell", True )
+                                        , ( Color.toString <| Cell.sideColor side <| c, True )
+                                        , ( "crossed", Cell.isExposed side c || Cell.isExposedAll c )
+                                        ]
+                                    ]
+                                    []
+                            )
+                    )
+        ]
