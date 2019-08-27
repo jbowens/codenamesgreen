@@ -288,6 +288,11 @@ input#game-id {
 
 #events .side { color: #9d9d9d; }
 
+#events .system-message {
+  font-size: 0.8em;
+  color: #777;
+}
+
 #event-log #events {
   flex: auto;
   overflow-y: scroll;

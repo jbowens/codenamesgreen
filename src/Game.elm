@@ -342,10 +342,25 @@ viewEvents : Model -> Html Msg
 viewEvents model =
     Keyed.node "div"
         [ Attr.id "events" ]
-        (model.events
-            |> List.reverse
-            |> List.map (\e -> ( String.fromInt e.number, lazy2 viewEvent model e ))
+        (( "Welcome", viewWelcomeMessage )
+            :: (model.events
+                    |> List.reverse
+                    |> List.map (\e -> ( String.fromInt e.number, lazy2 viewEvent model e ))
+               )
         )
+
+
+viewWelcomeMessage : Html Msg
+viewWelcomeMessage =
+    div [ Attr.class "system-message" ] [ text """
+    Welcome! Codenames Green is a cooperative word game. Players divide into
+    two sides. Each side has nine green words that they must provide clues for.
+    Sides take turns giving one-word clues, plus a number indicating the
+    number of words it applies to. Then the other side guesses until they tap
+    a non-green word or choose to stop. Tapping a black instantly loses the game.
+    Try to reveal all green words before the timer counter reaches 9.
+    Good luck, have fun!
+    """ ]
 
 
 viewEvent : Model -> Event -> Html Msg
