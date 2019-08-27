@@ -1,4 +1,4 @@
-port module User exposing (User, decode, storeUpdatedUser)
+port module User exposing (User, decode, store)
 
 import Json.Decode as D
 import Json.Encode as E
@@ -20,8 +20,8 @@ type alias User =
     }
 
 
-storeUpdatedUser : User -> Cmd msg
-storeUpdatedUser user =
+store : User -> Cmd msg
+store user =
     user
         |> encode
         |> storeCache

@@ -24,7 +24,10 @@ if (parsedUser == null || !parsedUser.player_id || !parsedUser.name) {
     localStorage.setItem('user', encodedUser);
 }
 
-Elm.Main.init({
+var app = Elm.Main.init({
   node: document.getElementById('root'),
   flags: encodedUser,
+});
+app.ports.storeCache.subscribe(function(u) {
+  localStorage.setItem('user', JSON.stringify(u));
 });
