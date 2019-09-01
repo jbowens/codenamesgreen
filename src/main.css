@@ -116,7 +116,13 @@ input#game-id {
 
 #status div {
   flex: auto;
-  padding: 0.5em;
+  display: flex;
+  margin: 0.5em;
+  align-items: center;
+}
+
+#status button.done-guessing {
+  font-size: 0.8em;
 }
 
 .green-icon {
@@ -151,7 +157,7 @@ input#game-id {
   align-self: center;
 }
 
-#board .pickable:hover {
+#board.guessing .pickable:hover {
   opacity: 0.75;
   cursor: pointer;
 }
@@ -323,7 +329,7 @@ input#game-id {
   border: 1px #BBB solid;
   margin-right: 0.5em;
 }
-#chat-form button, #button-row button {
+#chat-form button, #button-row button, #status button {
   font-family: "Exo 2", sans-serif;
   font-size: 0.9em;
   background: #b1e773;
@@ -333,7 +339,7 @@ input#game-id {
   cursor: pointer;
 }
 
-#chat-form button:hover, #button-row button:hover {
+#chat-form button:hover, #button-row button:hover, #status button:hover{
   background: #c3f18d;
 }
 

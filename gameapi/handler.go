@@ -40,6 +40,7 @@ func Handler(wordLists map[string][]string) http.Handler {
 	h.mux.HandleFunc("/index", h.handleIndex)
 	h.mux.HandleFunc("/new-game", h.handleNewGame)
 	h.mux.HandleFunc("/guess", h.handleGuess)
+	h.mux.HandleFunc("/end-turn", h.handleEndTurn)
 	h.mux.HandleFunc("/chat", h.handleChat)
 	h.mux.HandleFunc("/events", h.handleEvents)
 	h.mux.HandleFunc("/ping", h.handlePing)
@@ -169,13 +170,12 @@ func (h *handler) handleNewGame(rw http.ResponseWriter, req *http.Request) {
 // POST /guess
 func (h *handler) handleGuess(rw http.ResponseWriter, req *http.Request) {
 	var body struct {
-		GameID    string `json:"game_id"`
-		Seed      Seed   `json:"seed"`
-		PlayerID  string `json:"player_id"`
-		Name      string `json:"name"`
-		Team      int    `json:"team"`
-		Index     int    `json:"index"`
-		LastEvent int    `json:"last_event"`
+		GameID   string `json:"game_id"`
+		Seed     Seed   `json:"seed"`
+		PlayerID string `json:"player_id"`
+		Name     string `json:"name"`
+		Team     int    `json:"team"`
+		Index    int    `json:"index"`
 	}
 
 	err := json.NewDecoder(req.Body).Decode(&body)
@@ -201,6 +201,47 @@ func (h *handler) handleGuess(rw http.ResponseWriter, req *http.Request) {
 
 	g.markSeen(body.PlayerID, body.Name, body.Team, time.Now())
 	g.guess(body.PlayerID, body.Name, body.Team, body.Index, time.Now())
+	writeJSON(rw, map[string]string{"status": "ok"})
+}
+
+// POST /end-turn
+func (h *handler) handleEndTurn(rw http.ResponseWriter, req *http.Request) {
+	var body struct {
+		GameID   string `json:"game_id"`
+		Seed     Seed   `json:"seed"`
+		PlayerID string `json:"player_id"`
+		Name     string `json:"name"`
+		Team     int    `json:"team"`
+	}
+
+	err := json.NewDecoder(req.Body).Decode(&body)
+	if err != nil || body.GameID == "" || body.Team == 0 || body.PlayerID == "" {
+		writeError(rw, "malformed_body", "Unable to parse request body.", 400)
+		return
+	}
+
+	h.mu.Lock()
+	g, ok := h.games[body.GameID]
+	h.mu.Unlock()
+	if !ok {
+		writeError(rw, "not_found", "Game not found", 404)
+		return
+	}
+
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if body.Seed != g.Seed {
+		writeError(rw, "bad_seed", "Request intended for a different game seed.", 400)
+		return
+	}
+
+	g.markSeen(body.PlayerID, body.Name, body.Team, time.Now())
+	g.addEvent(Event{
+		Type:     "end_turn",
+		Team:     body.Team,
+		PlayerID: body.PlayerID,
+		Name:     body.Name,
+	})
 	writeJSON(rw, map[string]string{"status": "ok"})
 }
 

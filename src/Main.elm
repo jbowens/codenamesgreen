@@ -371,7 +371,7 @@ viewSettings g settings =
 
 viewActiveSidebar : Game.Model -> Side.Side -> String -> List (Html Msg)
 viewActiveSidebar g side chatMessage =
-    [ lazy Game.viewStatus g
+    [ Html.map GameUpdate (lazy Game.viewStatus g)
     , Html.map GameUpdate (lazy2 Game.viewKeycard g side)
     , lazy3 viewEventBox g side chatMessage
     , viewButtonRow

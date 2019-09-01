@@ -1,4 +1,18 @@
-module Api exposing (Client, Event, GameState, Index, Update, chat, index, init, longPollEvents, maybeMakeGame, ping, submitGuess)
+module Api exposing
+    ( Client
+    , Event
+    , GameState
+    , Index
+    , Update
+    , chat
+    , endTurn
+    , index
+    , init
+    , longPollEvents
+    , maybeMakeGame
+    , ping
+    , submitGuess
+    )
 
 import Color exposing (Color)
 import Http
@@ -119,6 +133,31 @@ ping :
 ping r =
     Http.post
         { url = endpointUrl r.client.baseUrl "/ping"
+        , body =
+            Http.jsonBody
+                (E.object
+                    [ ( "game_id", E.string r.gameId )
+                    , ( "seed", E.string r.seed )
+                    , ( "player_id", E.string r.player.user.id )
+                    , ( "name", E.string r.player.user.name )
+                    , ( "team", Side.encodeMaybe r.player.side )
+                    ]
+                )
+        , expect = Http.expectWhatever r.toMsg
+        }
+
+
+endTurn :
+    { gameId : String
+    , seed : String
+    , player : Player
+    , toMsg : Result Http.Error () -> msg
+    , client : Client
+    }
+    -> Cmd msg
+endTurn r =
+    Http.post
+        { url = endpointUrl r.client.baseUrl "/end-turn"
         , body =
             Http.jsonBody
                 (E.object

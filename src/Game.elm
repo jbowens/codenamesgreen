@@ -6,7 +6,7 @@ import Browser.Dom as Dom
 import Cell exposing (Cell)
 import Color exposing (Color)
 import Dict
-import Html exposing (Html, div, h3, i, li, span, text, ul)
+import Html exposing (Html, button, div, h3, i, li, span, text, ul)
 import Html.Attributes as Attr
 import Html.Events exposing (onClick)
 import Html.Keyed as Keyed
@@ -37,6 +37,7 @@ init state user client toMsg =
                         |> List.indexedMap (\i ( w, ( e1, l1 ), ( e2, l2 ) ) -> Cell i w ( e1, l1 ) ( e2, l2 ))
                         |> Array.fromList
                 , player = { user = user, side = Nothing }
+                , lastToGuess = Nothing
                 , turn = Nothing
                 , tokensConsumed = 0
                 , client = client
@@ -64,6 +65,7 @@ type alias Model =
     , events : List Api.Event
     , cells : Array Cell
     , player : Player
+    , lastToGuess : Maybe Side
     , turn : Maybe Side
     , tokensConsumed : Int
     , client : Api.Client
@@ -139,6 +141,7 @@ type Msg
     | GameUpdate (Result Http.Error Api.Update)
     | WordPicked Cell
     | ToggleKeyView KeyView
+    | DoneGuessing
 
 
 update : Msg -> Model -> (Msg -> msg) -> Maybe ( Model, Cmd msg )
@@ -199,6 +202,23 @@ update msg model toMsg =
                             Cmd.none
                         )
 
+        DoneGuessing ->
+            case ( model.turn, model.turn == model.player.side ) of
+                ( Just side, True ) ->
+                    Just
+                        ( model
+                        , Api.endTurn
+                            { gameId = model.id
+                            , seed = model.seed
+                            , player = model.player
+                            , toMsg = always (toMsg NoOp)
+                            , client = model.client
+                            }
+                        )
+
+                _ ->
+                    Just ( model, Cmd.none )
+
 
 applyUpdate : Model -> Update -> (Msg -> msg) -> Maybe ( Model, Cmd msg )
 applyUpdate model up toMsg =
@@ -243,6 +263,18 @@ applyEvent e model =
                     _ ->
                         { model | events = e :: model.events }
 
+            "end_turn" ->
+                case ( model.turn == e.side, e.side ) of
+                    ( True, Just side ) ->
+                        { model
+                            | turn = Just (Side.opposite side)
+                            , tokensConsumed = model.tokensConsumed + 1
+                            , events = e :: model.events
+                        }
+
+                    _ ->
+                        { model | events = e :: model.events }
+
             _ ->
                 { model | events = e :: model.events }
 
@@ -258,6 +290,7 @@ applyGuess e cell side model =
 
             else
                 Just side
+        , lastToGuess = Just side
         , tokensConsumed =
             case ( model.turn == Just (Side.opposite side), Cell.oppColor side cell ) of
                 ( True, Color.Tan ) ->
@@ -302,7 +335,7 @@ jumpToBottom id toMsg =
         |> Task.attempt (always (toMsg NoOp))
 
 
-viewStatus : Model -> Html a
+viewStatus : Model -> Html Msg
 viewStatus model =
     case status model of
         Start ->
@@ -319,22 +352,51 @@ viewStatus model =
 
         InProgress turn greens tokensConsumed ->
             div [ Attr.id "status", Attr.class "in-progress" ]
-                [ div [] [ text (String.fromInt greens), span [ Attr.class "green-icon" ] [] ]
-                , div [] [ text (String.fromInt tokensConsumed), text " ", i [ Attr.class "icon ion-ios-time" ] [] ]
-                ]
+                (List.append
+                    (if Just turn == model.player.side then
+                        div [] [ text "Your turn to guess." ]
+                            :: (if model.lastToGuess == Just turn then
+                                    -- You /must/ guess at least once, so if it's
+                                    -- your turn /AND/ you were last to guess, you
+                                    -- have the the option to stop guessing.
+                                    [ div [] [ button [ Attr.class "done-guessing", onClick DoneGuessing ] [ text "Done guessing" ] ] ]
+
+                                else
+                                    []
+                               )
+
+                     else
+                        [ div [] [ text "Your turn to give a clue." ] ]
+                    )
+                    [ div [] [ text (String.fromInt greens), span [ Attr.class "green-icon" ] [] ]
+                    , div [] [ text (String.fromInt tokensConsumed), text " ", i [ Attr.class "icon ion-ios-time" ] [] ]
+                    ]
+                )
 
 
 viewBoard : Model -> Html Msg
 viewBoard model =
+    let
+        isGuessing =
+            model.turn == model.player.side || model.turn == Nothing
+
+        tapMsg =
+            if isGuessing then
+                WordPicked
+
+            else
+                always NoOp
+    in
     Keyed.node "div"
         [ Attr.id "board"
         , Attr.classList
             [ ( "no-team", model.player.side == Nothing )
+            , ( "guessing", isGuessing )
             ]
         ]
         (model.cells
             |> Array.toList
-            |> List.map (\c -> ( c.word, lazy3 Cell.view model.player.side WordPicked c ))
+            |> List.map (\c -> ( c.word, lazy3 Cell.view model.player.side tapMsg c ))
         )
 
 
