@@ -393,7 +393,9 @@ viewButtonRow : Html Msg
 viewButtonRow =
     div [ Attr.id "button-row" ]
         [ div [] [ button [ onClick NextGame ] [ text "Next game" ] ]
-        , div [] [ i [ Attr.id "open-settings", Attr.class "icon icon-button ion-ios-settings", onClick ToggleSettings ] [] ]
+
+        -- TODO: add settings
+        -- , div [] [ i [ Attr.id "open-settings", Attr.class "icon icon-button ion-ios-settings", onClick ToggleSettings ] [] ]
         ]
 
 
