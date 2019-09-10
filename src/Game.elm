@@ -135,8 +135,8 @@ hasHiddenGreens : Side -> Array Cell -> Bool
 hasHiddenGreens side cells =
     cells
         |> Array.toList
-        |> List.map (\x -> ( Cell.isExposed side x, Cell.sideColor side x ))
-        |> List.any (\( exposed, color ) -> not exposed && color == Color.Green)
+        |> List.filter (\x -> Cell.display x /= Cell.ExposedGreen)
+        |> List.any (\x -> Cell.sideColor side x == Color.Green)
 
 
 
