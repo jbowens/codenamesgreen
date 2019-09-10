@@ -502,6 +502,14 @@ viewEvent model e =
             in
             div [] [ text e.name, sideEl, text ": ", text e.message ]
 
+        "end_turn" ->
+            case e.side of
+                Nothing ->
+                    text ""
+
+                Just side ->
+                    div [] [ text "Side ", text (Side.toString side), text " took a timer token ending the turn." ]
+
         _ ->
             text ""
 
