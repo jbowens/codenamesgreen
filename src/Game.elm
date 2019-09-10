@@ -37,7 +37,7 @@ init state user client toMsg =
                         |> List.indexedMap (\i ( w, ( e1, l1 ), ( e2, l2 ) ) -> Cell i w ( e1, l1 ) ( e2, l2 ))
                         |> Array.fromList
                 , player = { user = user, side = Nothing }
-                , lastToGuess = Nothing
+                , guessesThisTurn = 0
                 , turn = Nothing
                 , tokensConsumed = 0
                 , client = client
@@ -65,7 +65,7 @@ type alias Model =
     , events : List Api.Event
     , cells : Array Cell
     , player : Player
-    , lastToGuess : Maybe Side
+    , guessesThisTurn : Int
     , turn : Maybe Side
     , tokensConsumed : Int
     , client : Api.Client
@@ -129,6 +129,14 @@ exposedBlack cells =
     cells
         |> List.map Cell.display
         |> List.any (\x -> x == Cell.ExposedBlack)
+
+
+hasHiddenGreens : Side -> Array Cell -> Bool
+hasHiddenGreens side cells =
+    cells
+        |> Array.toList
+        |> List.map (\x -> ( Cell.isExposed side x, Cell.sideColor side x ))
+        |> List.any (\( exposed, color ) -> not exposed && color == Color.Green)
 
 
 
@@ -267,7 +275,13 @@ applyEvent e model =
                 case ( model.turn == e.side, e.side ) of
                     ( True, Just side ) ->
                         { model
-                            | turn = Just (Side.opposite side)
+                            | turn =
+                                if hasHiddenGreens side model.cells then
+                                    Just (Side.opposite side)
+
+                                else
+                                    model.turn
+                            , guessesThisTurn = 0
                             , tokensConsumed = model.tokensConsumed + 1
                             , events = e :: model.events
                         }
@@ -281,34 +295,58 @@ applyEvent e model =
 
 applyGuess : Event -> Cell -> Side -> Model -> Model
 applyGuess e cell side model =
-    { model
-        | cells = Array.set e.index (Cell.tapped side cell) model.cells
-        , events = e :: model.events
-        , turn =
-            if Cell.oppColor side cell == Color.Tan then
-                Just (Side.opposite side)
+    if model.turn == Just (Side.opposite side) then
+        -- It's not this side's turn to guess.
+        -- Ignore it.
+        { model | events = e :: model.events }
 
-            else
-                Just side
-        , lastToGuess = Just side
-        , tokensConsumed =
-            case ( model.turn == Just (Side.opposite side), Cell.oppColor side cell ) of
-                ( True, Color.Tan ) ->
-                    -- If it's the other side's turn, we need to consume one
-                    -- token to end the previous side's turn at guessing.
-                    -- If the currently guessing team hit a tan, they're
-                    -- done guessing and we need to consume a second.
-                    model.tokensConsumed + 2
+    else
+        let
+            updatedCells =
+                Array.set e.index (Cell.tapped side cell) model.cells
+        in
+        case Cell.oppColor side cell of
+            Color.Tan ->
+                -- When a tan is tapped, a token is always consumed.
+                -- We only flip the turn if side that guessed the tan
+                -- also has unrevealed greens for the other side to guess.
+                { model
+                    | cells = updatedCells
+                    , events = e :: model.events
+                    , turn =
+                        if hasHiddenGreens side updatedCells then
+                            Just (Side.opposite side)
 
-                ( _, Color.Tan ) ->
-                    model.tokensConsumed + 1
+                        else
+                            Just side
+                    , guessesThisTurn = 0
+                    , tokensConsumed = model.tokensConsumed + 1
+                }
 
-                ( True, _ ) ->
-                    model.tokensConsumed + 1
+            Color.Green ->
+                -- When a green is tapped, it might be the last green on
+                -- the opposite side's board, in which case we need to
+                -- consume a token and flip the turn.
+                if hasHiddenGreens (Side.opposite side) updatedCells then
+                    { model
+                        | cells = updatedCells
+                        , events = e :: model.events
+                        , guessesThisTurn = model.guessesThisTurn + 1
+                        , turn = Just side
+                    }
 
-                _ ->
-                    model.tokensConsumed
-    }
+                else
+                    { model
+                        | cells = updatedCells
+                        , events = e :: model.events
+                        , turn = Just (Side.opposite side)
+                        , guessesThisTurn = 0
+                        , tokensConsumed = model.tokensConsumed + 1
+                    }
+
+            Color.Black ->
+                -- game over
+                { model | cells = updatedCells, events = e :: model.events }
 
 
 longPollEvents : Model -> (Msg -> msg) -> Cmd msg
@@ -354,19 +392,17 @@ viewStatus model =
             div [ Attr.id "status", Attr.class "in-progress" ]
                 (List.append
                     (if Just turn == model.player.side then
-                        div [] [ text "Your turn to guess." ]
-                            :: (if model.lastToGuess == Just turn then
-                                    -- You /must/ guess at least once, so if it's
-                                    -- your turn /AND/ you were last to guess, you
-                                    -- have the the option to stop guessing.
+                        div [] [ text "You're guessing." ]
+                            :: (if model.guessesThisTurn > 0 then
+                                    -- You /must/ guess at least once.
                                     [ div [] [ button [ Attr.class "done-guessing", onClick DoneGuessing ] [ text "Done guessing" ] ] ]
 
                                 else
-                                    []
+                                    [ div [] [ button [ Attr.class "done-guessing", Attr.disabled True ] [ text "Must guess once" ] ] ]
                                )
 
                      else
-                        [ div [] [ text "Your turn to give a clue." ] ]
+                        [ div [] [ text "You're clue giving." ] ]
                     )
                     [ div [] [ text (String.fromInt greens), span [ Attr.class "green-icon" ] [] ]
                     , div [] [ text (String.fromInt tokensConsumed), text " ", i [ Attr.class "icon ion-ios-time" ] [] ]

@@ -343,6 +343,11 @@ input#game-id {
   background: #c3f18d;
 }
 
+#chat-form button:disabled, #button-row button:disabled, #status button:disabled {
+  background: #b1e773;
+  cursor: default;
+}
+
 .chat-color {
   font-weight: bold;
 }
