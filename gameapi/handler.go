@@ -44,6 +44,7 @@ func Handler(wordLists map[string][]string) http.Handler {
 	h.mux.HandleFunc("/chat", h.handleChat)
 	h.mux.HandleFunc("/events", h.handleEvents)
 	h.mux.HandleFunc("/ping", h.handlePing)
+	h.mux.HandleFunc("/stats", h.handleStats)
 
 	// Periodically remove games that are old and inactive.
 	go func() {
@@ -397,6 +398,25 @@ func (h *handler) handlePing(rw http.ResponseWriter, req *http.Request) {
 type GameUpdate struct {
 	Seed   Seed    `json:"seed"`
 	Events []Event `json:"events"`
+}
+
+func (h *handler) handleStats(rw http.ResponseWriter, req *http.Request) {
+	var players, games int
+	h.mu.Lock()
+	for _, g := range h.games {
+		g.mu.Lock()
+		players += len(g.players)
+		if len(g.players) > 0 {
+			games++
+		}
+		g.mu.Unlock()
+	}
+	h.mu.Unlock()
+
+	writeJSON(rw, struct {
+		ActiveGames   int `json:"active_games"`
+		ActivePlayers int `json:"active_players"`
+	}{ActiveGames: games, ActivePlayers: players})
 }
 
 func writeError(rw http.ResponseWriter, code, message string, statusCode int) {
