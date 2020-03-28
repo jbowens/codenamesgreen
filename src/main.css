@@ -480,3 +480,32 @@ input#game-id {
 @media (orientation: portrait) and (max-width: 400px) {
   #key-list { font-size: 0.8em; }
 }
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #222;
+    color: #eee;
+  }
+  #board .cell {
+    background: #444;
+  }
+  #header a {
+    color: #fff;
+  }
+  #events .system-message {
+    color: #999;
+  }
+  #events .side {
+    color: #777;
+  }
+  #header {
+    border-bottom-color: #444;
+  }
+  #event-log #events {
+    border-color: #444;
+  }
+  #chat-form input {
+    background: #111;
+    border-color: #666;
+    color: #eee;
+  }
+}
