@@ -503,7 +503,7 @@ input#game-id {
   #event-log #events {
     border-color: #444;
   }
-  #chat-form input {
+  input#game-id, #chat-form input {
     background: #111;
     border-color: #666;
     color: #eee;
