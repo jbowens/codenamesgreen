@@ -99,7 +99,9 @@ func (h *handler) handleIndex(rw http.ResponseWriter, req *http.Request) {
 	id := ""
 	h.mu.Lock()
 	for {
-		id = strings.ToLower(h.allWords[h.rand.Int63n(int64(len(h.allWords)))])
+		w1 := strings.ToLower(h.allWords[h.rand.Int63n(int64(len(h.allWords)))])
+		w2 := strings.ToLower(h.allWords[h.rand.Int63n(int64(len(h.allWords)))])
+		id := fmt.Sprintf("%s-%s", w1, w2)
 		if _, ok := h.games[id]; !ok {
 			break
 		}
