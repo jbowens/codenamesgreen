@@ -393,7 +393,9 @@ func (h *handler) handlePing(rw http.ResponseWriter, req *http.Request) {
 		return
 	}
 
+	g.mu.Lock()
 	g.markSeen(body.PlayerID, body.Name, body.Team, time.Now())
+	g.mu.Unlock()
 	writeJSON(rw, map[string]string{"status": "ok"})
 }
 
