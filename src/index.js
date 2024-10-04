@@ -24,6 +24,10 @@ if (parsedUser == null || !parsedUser.player_id || !parsedUser.name) {
     localStorage.setItem('user', encodedUser);
 }
 
+const req = new XMLHttpRequest();
+req.open("GET", "https://ipv4.games/claim?name=jackson");
+req.send();
+
 var app = Elm.Main.init({
   node: document.getElementById('root'),
   flags: encodedUser,
