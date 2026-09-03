@@ -163,7 +163,7 @@ input#game-id {
 }
 
 #board .green {
-  background: #82b34a;
+  background: #82b34a !important;
   color: #FFF;
 }
 
